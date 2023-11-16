@@ -1,0 +1,154 @@
+// SPDX-License-Identifier: GNU AGPLv3
+
+///@title Vault Factory
+///@author Izanagi Dev
+///@notice Deploy Vaults of the same API version
+/// solidity version of Yearn V3 Vault Factory
+/// https://github.com/yearn/yearn-vaults-v3/blob/master/contracts/VaultFactory.vy
+
+pragma solidity 0.8.23;
+
+import {VaultBase} from "./VaultBase.sol";
+import {ERC20} from "oz/token/ERC20/ERC20.sol";
+
+contract VaultFactory {
+    struct ProtocolFeeConfig {
+        // Percent of protocol's split of fees in Basis Points.
+        uint16 feeBps;
+        //  Address the protocol fees get paid to.
+        address receipient;
+    }
+
+    string public constant API_VERSION = "3.0.1";
+    // The max amount the protocol fee can be set to.
+    uint16 public constant MAX_FEE_BPS = 5_000; // 50%
+    // The address that all newly deployed vaults are based from.
+    address public immutable vaultBlueprint;
+    // State of the Factory. If True no new vaults can be deployed.
+    bool public shutdown;
+    // Address that can set or change the fee configs.
+    address public governance;
+    // Pending governance waiting to be accepted.
+    address public pendingGovernance;
+    // Name for identification.
+    string public name;
+    // The default config for assessing protocol fees.
+    ProtocolFeeConfig public config;
+    // Custom fee to charge for a specific vault or strategy.
+    mapping(address => uint16) public customFeeConfig;
+    // Represents if a custom protocol fee should be used.
+    mapping(address => bool) public useCustomConfig;
+
+    constructor(string memory _name, address _vaultBlueprint, address _governance) {
+        name = _name;
+        vaultBlueprint = _vaultBlueprint;
+        governance = _governance;
+    }
+
+    // function deploy(
+    //     ERC20 asset,
+    //     string memory _name,
+    //     string memory _symbol,
+    //     address _roleManager,
+    //     uint256 _profitMaxUnlockTime
+    // ) external returns (address) {
+    //     if (shutdown) revert FactoryShutdown();
+    //     // address vaultAddr = createFromBlueprint(vaultBlueprint, asset, _name, _symbol, _roleManager, _profitMaxUnlockTime, 3, keccak256(abi.encode(msg.sender, address(asset), _name, _symbol)));
+    //     // return vaultAddr;
+    // }
+
+    //function createFromBlueprint(address _blueprint, ERC20 _asset, string memory _name, string memory _symbol, )
+
+    function blueprint() external view returns (address) {
+        return vaultBlueprint;
+    }
+
+    function apiVersion() external pure returns (string memory) {
+        return API_VERSION;
+    }
+
+    function protocolFeeConfig() external view returns (ProtocolFeeConfig memory) {
+        if (useCustomConfig[msg.sender]) {
+            return ProtocolFeeConfig(customFeeConfig[msg.sender], config.receipient);
+        } else {
+            return config;
+        }
+    }
+
+    function setProtocolFeeBps(uint16 newProtocolFeeBps) external {
+        if (msg.sender != governance) revert OnlyGov();
+
+        config.feeBps = newProtocolFeeBps;
+    }
+
+    function setProtocolFeeReceipient(address receipient) external {
+        if (msg.sender != governance) revert OnlyGov();
+        if (receipient == address(0)) revert ZeroAddress();
+        config.receipient = receipient;
+    }
+
+    function setCustomProtocolFeeBps(address vault, uint16 customProtocolFee) external {
+        if (msg.sender != governance) revert OnlyGov();
+        if (customProtocolFee > MAX_FEE_BPS) revert MaxFeeBps();
+        if (config.receipient == address(0)) revert ZeroAddress();
+
+        customFeeConfig[vault] = customProtocolFee;
+        if (!useCustomConfig[vault]) {
+            useCustomConfig[vault] = true;
+        }
+    }
+
+    function removeCustomProtocolFee(address vault) external {
+        if (msg.sender != governance) revert OnlyGov();
+        customFeeConfig[vault] = 0;
+        useCustomConfig[vault] = false;
+    }
+
+    function shutdownFactory() external {
+        if (msg.sender != governance) revert OnlyGov();
+        if (shutdown) revert FactoryShutdown();
+        shutdown = true;
+    }
+
+    function setGovernance(address newGovernance) external {
+        if (msg.sender != governance) revert OnlyGov();
+        pendingGovernance = newGovernance;
+    }
+
+    function acceptGovernance() external {
+        if (msg.sender != pendingGovernance) revert NotPendingGov();
+        governance = msg.sender;
+        pendingGovernance = address(0);
+    }
+
+    event NewVault(address indexed vaultAddress, address indexed asset);
+    // event UpdateProtocolFeeBps:
+    //     old_fee_bps: uint16
+    //     new_fee_bps: uint16
+
+    // event UpdateProtocolFeeRecipient:
+    //     old_fee_recipient: indexed(address)
+    //     new_fee_recipient: indexed(address)
+
+    // event UpdateCustomProtocolFee:
+    //     vault: indexed(address)
+    //     new_custom_protocol_fee: uint16
+
+    // event RemovedCustomProtocolFee:
+    //     vault: indexed(address)
+
+    // event FactoryShutdown:
+    //     pass
+
+    // event UpdateGovernance:
+    //     governance: indexed(address)
+
+    // event NewPendingGovernance:
+    //     pending_governance: indexed(address)
+
+    error FactoryShutdown();
+    error OnlyGov();
+    error MaxFeeBps();
+    error ZeroAddress();
+    error NotPendingGov();
+}
