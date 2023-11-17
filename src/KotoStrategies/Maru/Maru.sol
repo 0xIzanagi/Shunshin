@@ -4,6 +4,6 @@ pragma solidity 0.8.23;
 
 ///@title Maru
 ///@author Koto Protocol
-///@notice 
+///@notice
 
 contract Maru {}

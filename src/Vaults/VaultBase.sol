@@ -962,7 +962,7 @@ contract VaultBase is VaultErrors, VaultEvents {
         return _convertToShares(assets, false);
     }
 
-    function previewRedeem(uint256 shares) external view returns(uint256) {
+    function previewRedeem(uint256 shares) external view returns (uint256) {
         return _convertToAssets(shares, false);
     }
 
@@ -970,7 +970,6 @@ contract VaultBase is VaultErrors, VaultEvents {
         if (strategies[strategy].currentDebt < assetsNeeded) revert AssetsGtDebt();
         return _assessShareOfUnrealisedLosses(strategy, assetsNeeded);
     }
-
 
     function profitMaxUnlockTime() external view returns (uint256) {
         return _profitMaxUnlockTime;
