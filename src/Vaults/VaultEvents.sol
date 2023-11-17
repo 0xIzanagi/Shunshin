@@ -2,4 +2,4 @@
 
 pragma solidity 0.8.23;
 
-interface IAccountant {}
+abstract contract VaultEvents {}

@@ -4,7 +4,7 @@ pragma solidity 0.8.23;
 import {ERC20} from "oz/token/ERC20/ERC20.sol";
 
 // TokenizedStrategy interface used for internal view delegateCalls.
-import {ITokenizedStrategy} from "../interfaces/ITokenizedStrategy.sol";
+import {ITokenizedStrategy} from "./interfaces/ITokenizedStrategy.sol";
 
 /**
  * @title YearnV3 Base Strategy

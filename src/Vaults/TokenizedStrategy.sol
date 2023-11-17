@@ -53,8 +53,8 @@ import {Math} from "oz/utils/math/Math.sol";
 import {ERC20} from "oz/token/ERC20/ERC20.sol";
 import {SafeERC20} from "oz/token/ERC20/utils/SafeERC20.sol";
 
-import {IFactory} from "../interfaces/IFactory.sol";
-import {IBaseStrategy} from "../interfaces/IBaseStrategy.sol";
+import {IFactory} from "./interfaces/IFactory.sol";
+import {IBaseStrategy} from "./interfaces/IBaseStrategy.sol";
 
 /**
  * @title Yearn Tokenized Strategy
@@ -959,7 +959,7 @@ contract TokenizedStrategy {
             if (totalFees != 0) {
                 // Get the config from the factory.
                 uint16 protocolFeeBps;
-                (protocolFeeBps, protocolFeesRecipient) = IFactory(FACTORY).protocol_fee_config();
+                (protocolFeeBps, protocolFeesRecipient) = IFactory(FACTORY).protocolFeeConfig();
 
                 // Check if there is a protocol fee to charge.
                 if (protocolFeeBps != 0) {

@@ -9,21 +9,21 @@ import {BytesLib} from "../libraries/Byteslib.sol";
 
 pragma solidity 0.8.23;
 
-
+//Todo: Add the ability to create blueprint bytecode off-chain *probably handle this within the factory itself?*
 
 abstract contract BlueprintFactory {
     using BytesLib for bytes;
     using BytesLib for bytes1;
 
-    bytes private constant PREAMBLE = 'fe7100'; 
+    bytes private constant PREAMBLE = "fe7100";
 
-    function deployBlueprint() internal returns(address) {}
+    function deployBlueprint() internal returns (address) {}
 
-    function createFromBlueprint() internal returns(address) {}
+    function createFromBlueprint() internal returns (address) {}
 
-    function blueprintDeployerBytecode(bytes calldata initcode) private returns(bytes memory) {}
+    function blueprintDeployerBytecode(bytes calldata initcode) private returns (bytes memory) {}
 
-    function blueprintPreamble(bytes memory bytecode) private pure returns(uint8, bytes memory, bytes memory) {
+    function blueprintPreamble(bytes memory bytecode) private pure returns (uint8, bytes memory, bytes memory) {
         if (!BytesLib.equal(bytecode.slice(0, 2), PREAMBLE)) revert NotBluePrint();
         bytes memory empty;
         uint8 ercVersion = uint8((bytecode[2] & bytes1(0xfc)) >> 2);
@@ -36,7 +36,6 @@ abstract contract BlueprintFactory {
         if (BytesLib.equal(initcode, empty)) revert NoInitCode();
 
         return (ercVersion, preamble_data, initcode);
-
     }
 
     error NotBluePrint();

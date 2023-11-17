@@ -122,29 +122,13 @@ contract VaultFactory {
     }
 
     event NewVault(address indexed vaultAddress, address indexed asset);
-    // event UpdateProtocolFeeBps:
-    //     old_fee_bps: uint16
-    //     new_fee_bps: uint16
-
-    // event UpdateProtocolFeeRecipient:
-    //     old_fee_recipient: indexed(address)
-    //     new_fee_recipient: indexed(address)
-
-    // event UpdateCustomProtocolFee:
-    //     vault: indexed(address)
-    //     new_custom_protocol_fee: uint16
-
-    // event RemovedCustomProtocolFee:
-    //     vault: indexed(address)
-
-    // event FactoryShutdown:
-    //     pass
-
-    // event UpdateGovernance:
-    //     governance: indexed(address)
-
-    // event NewPendingGovernance:
-    //     pending_governance: indexed(address)
+    event UpdateProtocolFeeBps(uint16 oldFeeBps, uint16 newFeeBps);
+    event UpdateProtocolFeeRecipient(address indexed oldFeeReceipient, address indexed newFeeReceipient);
+    event UpdateCustomProtocolFee(address indexed vault, uint16 newCustomProtocolFee);
+    event RemovedCustomProtocolFee(address indexed vault);
+    event FactoryClose(uint256 timestamp);
+    event UpdateGovernance(address indexed governance);
+    event NewPendingGovernance(address indexed pendingGovernance);
 
     error FactoryShutdown();
     error OnlyGov();
