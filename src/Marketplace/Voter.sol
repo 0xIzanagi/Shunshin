@@ -115,7 +115,7 @@ contract Voter is IVoter {
     }
 
     function reset(address _sender) external onlyNewEpoch(_sender) {
-        require(IVotingEscrow(_ve).isApprovedOrOwner(msg.sender, _sender));
+        require(IVotingEscrow(_ve).isApproved(msg.sender, _sender));
         lastVoted[_sender] = block.timestamp;
         _reset(_sender);
         IVotingEscrow(_ve).abstain(_sender);
@@ -213,7 +213,7 @@ contract Voter is IVoter {
         address[] calldata _poolVote,
         uint256[] calldata _weights
     ) external onlyNewEpoch(sender) {
-        require(IVotingEscrow(_ve).isApprovedOrOwner(msg.sender, sender));
+        require(IVotingEscrow(_ve).isApproved(msg.sender, sender));
         require(_poolVote.length == _weights.length);
         lastVoted[sender] = block.timestamp;
         _vote(sender, _poolVote, _weights);
@@ -368,8 +368,7 @@ contract Voter is IVoter {
     }
 
     function claimRewards(
-        address[] memory _gauges,
-        address[][] memory _tokens
+        address[] memory _gauges
     ) external {
         for (uint i = 0; i < _gauges.length; i++) {
             IGauge(_gauges[i]).getReward(msg.sender);
@@ -381,7 +380,7 @@ contract Voter is IVoter {
         address[][] memory _tokens,
         address _owner
     ) external {
-        require(IVotingEscrow(_ve).isApprovedOrOwner(msg.sender, _owner));
+        require(IVotingEscrow(_ve).isApproved(msg.sender, _owner));
         for (uint i = 0; i < _bribes.length; i++) {
             IBribe(_bribes[i]).getRewardForOwner(_owner, _tokens[i]);
         }

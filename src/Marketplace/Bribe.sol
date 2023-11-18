@@ -11,8 +11,7 @@ import "./interfaces/IVotingEscrow.sol";
 // Bribes pay out rewards for a given vault based on the votes that were received from the user (goes hand in hand with Voter.vote())
 contract Bribe is IBribe {
     address public immutable voter; // only voter can modify balances (since it only happens on vote())
-    address public immutable _ve; // 天使のたまご
-
+    address public immutable _ve;
     uint256 internal constant DURATION = 7 days; // rewards are released over the voting period
     uint256 internal constant MAX_REWARD_TOKENS = 16;
 
@@ -56,7 +55,6 @@ contract Bribe is IBribe {
     constructor(address _voter, address _votingEscrow, address[] memory _allowedRewardTokens) {
         voter = _voter;
         _ve = _votingEscrow;
-
         for (uint256 i; i < _allowedRewardTokens.length; i++) {
             if (_allowedRewardTokens[i] != address(0)) {
                 isReward[_allowedRewardTokens[i]] = true;
@@ -188,7 +186,9 @@ contract Bribe is IBribe {
 
     // allows a user to claim rewards for a given token
     function getReward(address sender, address[] memory tokens) external lock {
-        //require(IVotingEscrow(_ve).isApprovedOrOwner(msg.sender, sender));
+        if (msg.sender != sender) {
+            if (!IVotingEscrow(_ve).isApproved(sender, msg.sender)) revert NotApproved();
+        }
         for (uint256 i = 0; i < tokens.length; i++) {
             uint256 _reward = earned(tokens[i], sender);
             lastEarn[tokens[i]][sender] = block.timestamp;
@@ -326,4 +326,6 @@ contract Bribe is IBribe {
             token.call(abi.encodeWithSelector(IERC20.transferFrom.selector, from, to, value));
         require(success && (data.length == 0 || abi.decode(data, (bool))));
     }
+
+    error NotApproved();
 }

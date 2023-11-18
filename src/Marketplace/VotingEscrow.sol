@@ -59,6 +59,7 @@ contract VotingEscrow is IVotingEscrow {
     address public team;
     address public artProxy;
 
+    mapping(address => mapping(address => bool)) private _approved;
     mapping(uint256 => Point) public point_history; // epoch -> unsigned point
 
     /// @dev Mapping of interface id to bool about whether or not it's supported
@@ -116,6 +117,16 @@ contract VotingEscrow is IVotingEscrow {
         team = _team;
     }
 
+    function approve(address _user, bool _approve) external returns(bool) {
+        _approved[msg.sender][_user] = _approve;
+        return true;
+    }
+
+    ///TODO: Implementation
+    function isApproved(address _owner, address _user) external view returns(bool) {
+        return _approved[_owner][_user];
+    }
+
     /*//////////////////////////////////////////////////////////////
                              ESCROW STORAGE
     //////////////////////////////////////////////////////////////*/
@@ -147,11 +158,6 @@ contract VotingEscrow is IVotingEscrow {
 
     function locked__end(address sender) external view returns (uint256) {
         return locked[sender].end;
-    }
-
-    ///TODO: Implementation
-    function isApprovedOrOwner(address, address) external view returns(bool) {
-        return true;
     }
 
     /// @notice Record global and per-user data to checkpoint
