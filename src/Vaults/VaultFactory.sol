@@ -38,6 +38,8 @@ contract VaultFactory {
     mapping(address => uint16) public customFeeConfig;
     // Represents if a custom protocol fee should be used.
     mapping(address => bool) public useCustomConfig;
+    // Represents if a address is a vault deployed from the factory or not
+    mapping(address => bool) public isVault;
 
     constructor(string memory _name, address _vaultBlueprint, address _governance) {
         name = _name;

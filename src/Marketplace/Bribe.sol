@@ -8,7 +8,7 @@ import {IGauge} from "./interfaces/IGauge.sol";
 import {IVoter} from "./interfaces/IVoter.sol";
 import "./interfaces/IVotingEscrow.sol";
 
-// Bribes pay out rewards for a given pool based on the votes that were received from the user (goes hand in hand with Voter.vote())
+// Bribes pay out rewards for a given vault based on the votes that were received from the user (goes hand in hand with Voter.vote())
 contract Bribe is IBribe {
     address public immutable voter; // only voter can modify balances (since it only happens on vote())
     address public immutable _ve; // 天使のたまご
@@ -199,14 +199,14 @@ contract Bribe is IBribe {
     }
 
     // used by Voter to allow batched reward claims
-    function getRewardForOwner(address sender, address _owner, address[] memory tokens) external lock {
+    function getRewardForOwner(address sender, address[] memory tokens) external lock {
         require(msg.sender == voter);
         for (uint256 i = 0; i < tokens.length; i++) {
             uint256 _reward = earned(tokens[i], sender);
             lastEarn[tokens[i]][sender] = block.timestamp;
-            if (_reward > 0) _safeTransfer(tokens[i], _owner, _reward);
+            if (_reward > 0) _safeTransfer(tokens[i], sender, _reward);
 
-            emit ClaimRewards(_owner, tokens[i], _reward);
+            emit ClaimRewards(sender, tokens[i], _reward);
         }
     }
 

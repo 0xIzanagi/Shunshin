@@ -2,4 +2,6 @@
 
 pragma solidity 0.8.23;
 
-interface IGaugeFactory {}
+interface IGaugeFactory {
+     function createGauge(address, address, address, bool, address[] memory) external returns (address);
+}

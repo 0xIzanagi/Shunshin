@@ -149,6 +149,11 @@ contract VotingEscrow is IVotingEscrow {
         return locked[sender].end;
     }
 
+    ///TODO: Implementation
+    function isApprovedOrOwner(address, address) external view returns(bool) {
+        return true;
+    }
+
     /// @notice Record global and per-user data to checkpoint
     /// @param sender NFT token ID. No user checkpoint if 0
     /// @param old_locked Pevious locked amount / end lock time for the user
