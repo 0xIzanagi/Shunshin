@@ -57,7 +57,6 @@ contract VotingEscrow is IVotingEscrow {
     address public immutable token;
     address public voter;
     address public team;
-    address public artProxy;
 
     mapping(address => mapping(address => bool)) private _approved;
     mapping(uint256 => Point) public point_history; // epoch -> unsigned point
@@ -87,6 +86,7 @@ contract VotingEscrow is IVotingEscrow {
         point_history[0].blk = block.number;
         point_history[0].ts = block.timestamp;
 
+        //TODO: decide if these are still needed
         supportedInterfaces[ERC165_INTERFACE_ID] = true;
         supportedInterfaces[ERC721_INTERFACE_ID] = true;
         supportedInterfaces[ERC721_METADATA_INTERFACE_ID] = true;
@@ -117,13 +117,13 @@ contract VotingEscrow is IVotingEscrow {
         team = _team;
     }
 
-    function approve(address _user, bool _approve) external returns(bool) {
+    function approve(address _user, bool _approve) external returns (bool) {
         _approved[msg.sender][_user] = _approve;
         return true;
     }
 
     ///TODO: Implementation
-    function isApproved(address _owner, address _user) external view returns(bool) {
+    function isApproved(address _owner, address _user) external view returns (bool) {
         return _approved[_owner][_user];
     }
 
@@ -161,7 +161,7 @@ contract VotingEscrow is IVotingEscrow {
     }
 
     /// @notice Record global and per-user data to checkpoint
-    /// @param sender NFT token ID. No user checkpoint if 0
+    /// @param sender user. No user checkpoint if 0
     /// @param old_locked Pevious locked amount / end lock time for the user
     /// @param new_locked New locked amount / end lock time for the user
     function _checkpoint(address sender, LockedBalance memory old_locked, LockedBalance memory new_locked) internal {

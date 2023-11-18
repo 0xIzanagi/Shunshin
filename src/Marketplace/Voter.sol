@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.23;
 
-import {Math} from './libraries/Math.sol';
-import {IBribe} from './interfaces/IBribe.sol';
-import {IBribeFactory} from './interfaces/IBribeFactory.sol';
-import {IGauge} from './interfaces/IGauge.sol';
-import {IGaugeFactory} from './interfaces/IGaugeFactory.sol';
-import {IERC20} from 'oz/token/ERC20/IERC20.sol';
+import {Math} from "./libraries/Math.sol";
+import {IBribe} from "./interfaces/IBribe.sol";
+import {IBribeFactory} from "./interfaces/IBribeFactory.sol";
+import {IGauge} from "./interfaces/IGauge.sol";
+import {IGaugeFactory} from "./interfaces/IGaugeFactory.sol";
+import {IERC20} from "oz/token/ERC20/IERC20.sol";
 import {IFactory} from "../Vaults/interfaces/IFactory.sol";
-import {IVoter} from './interfaces/IVoter.sol';
-import {IVotingEscrow} from './interfaces/IVotingEscrow.sol';
+import {IVoter} from "./interfaces/IVoter.sol";
+import {IVotingEscrow} from "./interfaces/IVotingEscrow.sol";
 
 contract Voter is IVoter {
     address public immutable _ve; // the ve token that governs these .
@@ -17,12 +17,12 @@ contract Voter is IVoter {
     address internal immutable base;
     address public immutable gaugefactory;
     address public immutable bribefactory;
-    uint internal constant DURATION = 7 days; // rewards are released over 7 days
+    uint256 internal constant DURATION = 7 days; // rewards are released over 7 days
     address public minter;
     address public governor; // should be set to an IGovernor
     address public emergencyCouncil; // credibly neutral party similar to Curve's Emergency DAO
 
-    uint public totalWeight; // total voting weight
+    uint256 public totalWeight; // total voting weight
 
     address[] public vaults; // all vaults viable for incentives
     mapping(address => address) public gauges; // vault => gauge
@@ -31,43 +31,23 @@ contract Voter is IVoter {
     mapping(address => uint256) public weights; // vault => weight
     mapping(address => mapping(address => uint256)) public votes; // owner => vault => votes
     mapping(address => address[]) public vaultVote; // sender => vaults
-    mapping(address => uint) public usedWeights; // sender => total voting weight of user
-    mapping(address => uint) public lastVoted; // sender => timestamp of last vote, to ensure one vote per epoch
+    mapping(address => uint256) public usedWeights; // sender => total voting weight of user
+    mapping(address => uint256) public lastVoted; // sender => timestamp of last vote, to ensure one vote per epoch
     mapping(address => bool) public isGauge;
     mapping(address => bool) public isWhitelisted;
     mapping(address => bool) public isAlive;
 
-    event GaugeCreated(
-        address indexed gauge,
-        address creator,
-        address indexed external_bribe,
-        address indexed pool
-    );
+    event GaugeCreated(address indexed gauge, address creator, address indexed external_bribe, address indexed pool);
     event Voted(address indexed voter, address indexed owner, uint256 weight);
-    event Abstained(uint tokenId, uint256 weight);
-    event Deposit(
-        address indexed lp,
-        address indexed gauge,
-        uint tokenId,
-        uint amount
-    );
-    event Withdraw(
-        address indexed lp,
-        address indexed gauge,
-        uint tokenId,
-        uint amount
-    );
-    event Attach(address indexed owner, address indexed gauge, uint tokenId);
-    event Detach(address indexed owner, address indexed gauge, uint tokenId);
+    event Abstained(uint256 tokenId, uint256 weight);
+    event Deposit(address indexed lp, address indexed gauge, uint256 tokenId, uint256 amount);
+    event Withdraw(address indexed lp, address indexed gauge, uint256 tokenId, uint256 amount);
+    event Attach(address indexed owner, address indexed gauge, uint256 tokenId);
+    event Detach(address indexed owner, address indexed gauge, uint256 tokenId);
     event Whitelisted(address indexed whitelister, address indexed token);
     event Abstained(address indexed _voter, uint256 _votes);
 
-    constructor(
-        address __ve,
-        address _factory,
-        address _gauges,
-        address _bribes
-    ) {
+    constructor(address __ve, address _factory, address _gauges, address _bribes) {
         _ve = __ve;
         factory = _factory;
         base = IVotingEscrow(__ve).token();
@@ -79,7 +59,8 @@ contract Voter is IVoter {
     }
 
     // simple re-entrancy check
-    uint internal _unlocked = 1;
+    uint256 internal _unlocked = 1;
+
     modifier lock() {
         require(_unlocked == 1);
         _unlocked = 2;
@@ -89,16 +70,13 @@ contract Voter is IVoter {
 
     modifier onlyNewEpoch(address _sender) {
         // ensure new epoch since last vote
-        require(
-            (block.timestamp / DURATION) * DURATION > lastVoted[_sender],
-            "TOKEN_ALREADY_VOTED_THIS_EPOCH"
-        );
+        require((block.timestamp / DURATION) * DURATION > lastVoted[_sender], "TOKEN_ALREADY_VOTED_THIS_EPOCH");
         _;
     }
 
     function initialize(address[] memory _tokens, address _minter) external {
         require(msg.sender == minter);
-        for (uint i = 0; i < _tokens.length; i++) {
+        for (uint256 i = 0; i < _tokens.length; i++) {
             _whitelist(_tokens[i]);
         }
         minter = _minter;
@@ -123,10 +101,10 @@ contract Voter is IVoter {
 
     function _reset(address _sender) internal {
         address[] storage _vaultVote = vaultVote[_sender];
-        uint _vaultVoteCnt = _vaultVote.length;
+        uint256 _vaultVoteCnt = _vaultVote.length;
         uint256 _totalWeight = 0;
 
-        for (uint i = 0; i < _vaultVoteCnt; i++) {
+        for (uint256 i = 0; i < _vaultVoteCnt; i++) {
             address _vault = _vaultVote[i];
             uint256 _votes = votes[_sender][_vault];
 
@@ -135,10 +113,7 @@ contract Voter is IVoter {
                 weights[_vault] -= _votes;
                 votes[_sender][_vault] -= _votes;
                 if (_votes > 0) {
-                    IBribe(external_bribes[gauges[_vault]])._withdraw(
-                        uint256(_votes),
-                        _sender
-                    );
+                    IBribe(external_bribes[gauges[_vault]])._withdraw(uint256(_votes), _sender);
                     _totalWeight += _votes;
                 } else {
                     _totalWeight -= _votes;
@@ -153,39 +128,34 @@ contract Voter is IVoter {
 
     function poke(address _sender) external {
         address[] memory _vaultVote = vaultVote[_sender];
-        uint _vaultCnt = _vaultVote.length;
+        uint256 _vaultCnt = _vaultVote.length;
         uint256[] memory _weights = new uint256[](_vaultCnt);
 
-        for (uint i = 0; i < _vaultCnt; i++) {
+        for (uint256 i = 0; i < _vaultCnt; i++) {
             _weights[i] = votes[_sender][_vaultVote[i]];
         }
 
         _vote(_sender, _vaultVote, _weights);
     }
 
-    function _vote(
-        address _sender,
-        address[] memory _vaultVote,
-        uint256[] memory _weights
-    ) internal {
+    function _vote(address _sender, address[] memory _vaultVote, uint256[] memory _weights) internal {
         _reset(_sender);
-        uint _vaultCnt = _vaultVote.length;
+        uint256 _vaultCnt = _vaultVote.length;
         uint256 _weight = IVotingEscrow(_ve).balanceOfNFT(_sender);
         uint256 _totalVoteWeight = 0;
         uint256 _totalWeight = 0;
         uint256 _usedWeight = 0;
 
-        for (uint i = 0; i < _vaultCnt; i++) {
+        for (uint256 i = 0; i < _vaultCnt; i++) {
             _totalVoteWeight += _weights[i];
         }
 
-        for (uint i = 0; i < _vaultCnt; i++) {
+        for (uint256 i = 0; i < _vaultCnt; i++) {
             address _vault = _vaultVote[i];
             address _gauge = gauges[_vault];
 
             if (isGauge[_gauge]) {
-                uint256 _vaultWeight = (_weights[i] * _weight) /
-                    _totalVoteWeight;
+                uint256 _vaultWeight = (_weights[i] * _weight) / _totalVoteWeight;
                 require(votes[_sender][_vault] == 0);
                 require(_vaultWeight != 0);
                 _updateFor(_gauge);
@@ -194,10 +164,7 @@ contract Voter is IVoter {
 
                 weights[_vault] += _vaultWeight;
                 votes[_sender][_vault] += _vaultWeight;
-                IBribe(external_bribes[_gauge])._deposit(
-                    uint256(_vaultWeight),
-                    _sender
-                );
+                IBribe(external_bribes[_gauge])._deposit(uint256(_vaultWeight), _sender);
                 _usedWeight += _vaultWeight;
                 _totalWeight += _vaultWeight;
                 emit Voted(msg.sender, _sender, _vaultWeight);
@@ -208,11 +175,10 @@ contract Voter is IVoter {
         usedWeights[_sender] = uint256(_usedWeight);
     }
 
-    function vote(
-        address sender,
-        address[] calldata _poolVote,
-        uint256[] calldata _weights
-    ) external onlyNewEpoch(sender) {
+    function vote(address sender, address[] calldata _poolVote, uint256[] calldata _weights)
+        external
+        onlyNewEpoch(sender)
+    {
         require(IVotingEscrow(_ve).isApproved(msg.sender, sender));
         require(_poolVote.length == _weights.length);
         lastVoted[sender] = block.timestamp;
@@ -244,23 +210,13 @@ contract Voter is IVoter {
         if (msg.sender != governor) {
             // gov can create for any pool, even non-Velodrome pairs
             require(isVault, "!_vault");
-            require(
-                isWhitelisted[tokenA] && isWhitelisted[tokenB],
-                "!whitelisted"
-            );
+            require(isWhitelisted[tokenA] && isWhitelisted[tokenB], "!whitelisted");
         }
 
-        address _external_bribe = IBribeFactory(bribefactory)
-            .createExternalBribe(allowedRewards);
-        address _gauge = IGaugeFactory(gaugefactory).createGauge(
-            _vault,
-            _external_bribe,
-            _ve,
-            isVault,
-            allowedRewards
-        );
+        address _external_bribe = IBribeFactory(bribefactory).createExternalBribe(allowedRewards);
+        address _gauge = IGaugeFactory(gaugefactory).createGauge(_vault, _external_bribe, _ve, isVault, allowedRewards);
 
-        IERC20(base).approve(_gauge, type(uint).max);
+        IERC20(base).approve(_gauge, type(uint256).max);
         external_bribes[_gauge] = _external_bribe;
         gauges[_vault] = _gauge;
         vaultForGauge[_gauge] = _vault;
@@ -294,32 +250,32 @@ contract Voter is IVoter {
         emit Attach(account, msg.sender, 0);
     }
 
-    function emitDeposit(uint tokenId, address account, uint amount) external {
+    function emitDeposit(uint256 tokenId, address account, uint256 amount) external {
         require(isGauge[msg.sender]);
         require(isAlive[msg.sender]);
         emit Deposit(account, msg.sender, tokenId, amount);
     }
 
-    function detachTokenFromGauge(uint tokenId, address account) external {
+    function detachTokenFromGauge(uint256 tokenId, address account) external {
         require(isGauge[msg.sender]);
         if (tokenId > 0) IVotingEscrow(_ve).detach(account);
         emit Detach(account, msg.sender, tokenId);
     }
 
-    function emitWithdraw(uint tokenId, address account, uint amount) external {
+    function emitWithdraw(uint256 tokenId, address account, uint256 amount) external {
         require(isGauge[msg.sender]);
         emit Withdraw(account, msg.sender, tokenId, amount);
     }
 
-    function length() external view returns (uint) {
+    function length() external view returns (uint256) {
         return vaults.length;
     }
 
-    uint internal index;
-    mapping(address => uint) internal supplyIndex;
-    mapping(address => uint) public claimable;
+    uint256 internal index;
+    mapping(address => uint256) internal supplyIndex;
+    mapping(address => uint256) public claimable;
 
-    function notifyRewardAmount(uint amount) external {
+    function notifyRewardAmount(uint256 amount) external {
         _safeTransferFrom(base, msg.sender, address(this), amount); // transfer the distro in
         uint256 _ratio = (amount * 1e18) / totalWeight; // 1e18 adjustment is removed during claim
         if (_ratio > 0) {
@@ -329,13 +285,13 @@ contract Voter is IVoter {
     }
 
     function updateFor(address[] memory _gauges) external {
-        for (uint i = 0; i < _gauges.length; i++) {
+        for (uint256 i = 0; i < _gauges.length; i++) {
             _updateFor(_gauges[i]);
         }
     }
 
-    function updateForRange(uint start, uint end) public {
-        for (uint i = start; i < end; i++) {
+    function updateForRange(uint256 start, uint256 end) public {
+        for (uint256 i = start; i < end; i++) {
             _updateFor(gauges[vaults[i]]);
         }
     }
@@ -352,12 +308,12 @@ contract Voter is IVoter {
         address _vault = vaultForGauge[_gauge];
         uint256 _supplied = weights[_vault];
         if (_supplied > 0) {
-            uint _supplyIndex = supplyIndex[_gauge];
-            uint _index = index; // get global index0 for accumulated distro
+            uint256 _supplyIndex = supplyIndex[_gauge];
+            uint256 _index = index; // get global index0 for accumulated distro
             supplyIndex[_gauge] = _index; // update _gauge current position to global position
-            uint _delta = _index - _supplyIndex; // see if there is any difference that need to be accrued
+            uint256 _delta = _index - _supplyIndex; // see if there is any difference that need to be accrued
             if (_delta > 0) {
-                uint _share = (uint(_supplied) * _delta) / 1e18; // add accrued difference for each supplied token
+                uint256 _share = (uint256(_supplied) * _delta) / 1e18; // add accrued difference for each supplied token
                 if (isAlive[_gauge]) {
                     claimable[_gauge] += _share;
                 }
@@ -367,28 +323,22 @@ contract Voter is IVoter {
         }
     }
 
-    function claimRewards(
-        address[] memory _gauges
-    ) external {
-        for (uint i = 0; i < _gauges.length; i++) {
+    function claimRewards(address[] memory _gauges) external {
+        for (uint256 i = 0; i < _gauges.length; i++) {
             IGauge(_gauges[i]).getReward(msg.sender);
         }
     }
 
-    function claimBribes(
-        address[] memory _bribes,
-        address[][] memory _tokens,
-        address _owner
-    ) external {
+    function claimBribes(address[] memory _bribes, address[][] memory _tokens, address _owner) external {
         require(IVotingEscrow(_ve).isApproved(msg.sender, _owner));
-        for (uint i = 0; i < _bribes.length; i++) {
+        for (uint256 i = 0; i < _bribes.length; i++) {
             IBribe(_bribes[i]).getRewardForOwner(_owner, _tokens[i]);
         }
     }
 
     function distribute(address _gauge) public lock {
         _updateFor(_gauge); // should set claimable to 0 if killed
-        uint _claimable = claimable[_gauge];
+        uint256 _claimable = claimable[_gauge];
         if (_claimable > IGauge(_gauge).left() && _claimable / DURATION > 0) {
             claimable[_gauge] = 0;
             IGauge(_gauge).notifyRewardAmount(_claimable);
@@ -404,37 +354,22 @@ contract Voter is IVoter {
         distribute(0, vaults.length);
     }
 
-    function distribute(uint start, uint finish) public {
-        for (uint x = start; x < finish; x++) {
+    function distribute(uint256 start, uint256 finish) public {
+        for (uint256 x = start; x < finish; x++) {
             distribute(gauges[vaults[x]]);
         }
     }
 
     function distribute(address[] memory _gauges) external {
-        for (uint x = 0; x < _gauges.length; x++) {
+        for (uint256 x = 0; x < _gauges.length; x++) {
             distribute(_gauges[x]);
         }
     }
 
-    function _safeTransferFrom(
-        address token,
-        address from,
-        address to,
-        uint256 value
-    ) internal {
+    function _safeTransferFrom(address token, address from, address to, uint256 value) internal {
         require(token.code.length > 0);
-        (bool success, bytes memory data) = token.call(
-            abi.encodeWithSelector(
-                IERC20.transferFrom.selector,
-                from,
-                to,
-                value
-            )
-        );
+        (bool success, bytes memory data) =
+            token.call(abi.encodeWithSelector(IERC20.transferFrom.selector, from, to, value));
         require(success && (data.length == 0 || abi.decode(data, (bool))));
     }
-
-
-   
-    
 }

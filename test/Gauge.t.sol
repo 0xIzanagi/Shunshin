@@ -16,6 +16,4 @@ contract GaugeTest is Test {
         mockReward = new ERC20Mock();
         gauge = new Gauge(address(mock), address(mockReward), address(0));
     }
-
 }
-

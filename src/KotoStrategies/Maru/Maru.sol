@@ -6,4 +6,6 @@ pragma solidity 0.8.23;
 ///@author Koto Protocol
 ///@notice
 
+import {FraxlendPair} from "./Fraxlend/FraxlendPair.sol";
+
 contract Maru {}

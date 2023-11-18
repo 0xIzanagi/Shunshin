@@ -9,14 +9,15 @@ interface IVotingEscrow {
         uint256 ts;
         uint256 blk; // block
     }
-    function approve(address, bool) external returns(bool);
 
-    function isApproved(address, address) external view returns(bool);
+    function approve(address, bool) external returns (bool);
+
+    function isApproved(address, address) external view returns (bool);
     /*//////////////////////////////////////////////////////////////
                              ESCROW STORAGE
     //////////////////////////////////////////////////////////////*/
 
-    function token() external view returns(address);
+    function token() external view returns (address);
     function get_last_user_slope(address sender) external view returns (int128);
     function user_point_history__ts(address sender, uint256 _idx) external view returns (uint256);
     function locked__end(address sender) external view returns (uint256);
