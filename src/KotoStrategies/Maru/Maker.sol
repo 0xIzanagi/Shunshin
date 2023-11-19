@@ -52,6 +52,7 @@ contract Maker is IMaker {
         return (xTokenOut, extraBaseTokenOut);
     }
     /// @inheritdoc IMaker
+
     function redeem(address _sender, uint256 _amount) external onlyMaru(msg.sender) {
         if (balanceOf[_sender] < _amount) revert InsufficentBalance();
         balanceOf[_sender] -= _amount;

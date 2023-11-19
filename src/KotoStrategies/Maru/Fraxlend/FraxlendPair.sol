@@ -25,23 +25,23 @@ pragma solidity ^0.8.19;
 
 // ====================================================================
 
-import { ERC20 } from "oz/token/ERC20/ERC20.sol";
-import { IERC20 } from "oz/token/ERC20/IERC20.sol";
-import { IERC20Metadata } from "oz/token/ERC20/extensions/IERC20Metadata.sol";
-import { ReentrancyGuard } from "oz/utils/ReentrancyGuard.sol";
-import { SafeCast } from "oz/utils/math/SafeCast.sol";
-import { FraxlendPairConstants } from "./FraxlendPairConstants.sol";
-import { FraxlendPairCore } from "./FraxlendPairCore.sol";
-import { Timelock2Step } from "./Timelock2Step.sol";
-import { SafeERC20 } from "./libraries/SafeERC20.sol";
-import { VaultAccount, VaultAccountingLibrary } from "./libraries/VaultAccount.sol";
-import { IRateCalculatorV2 } from "./interfaces/IRateCalculatorV2.sol";
-import { ISwapper } from "./interfaces/ISwapper.sol";
+import {ERC20} from "oz/token/ERC20/ERC20.sol";
+import {IERC20} from "oz/token/ERC20/IERC20.sol";
+import {IERC20Metadata} from "oz/token/ERC20/extensions/IERC20Metadata.sol";
+import {ReentrancyGuard} from "oz/utils/ReentrancyGuard.sol";
+import {SafeCast} from "oz/utils/math/SafeCast.sol";
+import {FraxlendPairConstants} from "./FraxlendPairConstants.sol";
+import {FraxlendPairCore} from "./FraxlendPairCore.sol";
+import {Timelock2Step} from "./Timelock2Step.sol";
+import {SafeERC20} from "./libraries/SafeERC20.sol";
+import {VaultAccount, VaultAccountingLibrary} from "./libraries/VaultAccount.sol";
+import {IRateCalculatorV2} from "./interfaces/IRateCalculatorV2.sol";
+import {ISwapper} from "./interfaces/ISwapper.sol";
 
 /// @title FraxlendPair
 /// @author Drake Evans (Frax Finance) https://github.com/drakeevans
 /// @notice  The FraxlendPair is a lending pair that allows users to engage in lending and borrowing activities
-abstract contract FraxlendPair is IERC20Metadata, FraxlendPairCore {
+contract FraxlendPair is IERC20Metadata, FraxlendPairCore {
     using VaultAccountingLibrary for VaultAccount;
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
@@ -49,11 +49,9 @@ abstract contract FraxlendPair is IERC20Metadata, FraxlendPairCore {
     /// @param _configData abi.encode(address _asset, address _collateral, address _oracle, uint32 _maxOracleDeviation, address _rateContract, uint64 _fullUtilizationRate, uint256 _maxLTV, uint256 _cleanLiquidationFee, uint256 _dirtyLiquidationFee, uint256 _protocolLiquidationFee)
     /// @param _immutables abi.encode(address _circuitBreakerAddress, address _comptrollerAddress, address _timelockAddress)
     /// @param _customConfigData abi.encode(string memory _nameOfContract, string memory _symbolOfContract, uint8 _decimalsOfContract)
-    constructor(
-        bytes memory _configData,
-        bytes memory _immutables,
-        bytes memory _customConfigData
-    ) FraxlendPairCore(_configData, _immutables, _customConfigData) {}
+    constructor(bytes memory _configData, bytes memory _immutables, bytes memory _customConfigData)
+        FraxlendPairCore(_configData, _immutables, _customConfigData)
+    {}
 
     // ============================================================================================
     // ERC20 Metadata
@@ -113,9 +111,11 @@ abstract contract FraxlendPair is IERC20Metadata, FraxlendPairCore {
     /// @return _userAssetShares The user fToken balance
     /// @return _userBorrowShares The user borrow shares
     /// @return _userCollateralBalance The user collateral balance
-    function getUserSnapshot(
-        address _address
-    ) external view returns (uint256 _userAssetShares, uint256 _userBorrowShares, uint256 _userCollateralBalance) {
+    function getUserSnapshot(address _address)
+        external
+        view
+        returns (uint256 _userAssetShares, uint256 _userBorrowShares, uint256 _userCollateralBalance)
+    {
         _userAssetShares = balanceOf(_address);
         _userBorrowShares = userBorrowShares[_address];
         _userCollateralBalance = userCollateralBalance[_address];
@@ -138,7 +138,7 @@ abstract contract FraxlendPair is IERC20Metadata, FraxlendPairCore {
             uint256 _totalCollateral
         )
     {
-        (, , , , VaultAccount memory _totalAsset, VaultAccount memory _totalBorrow) = previewAddInterest();
+        (,,,, VaultAccount memory _totalAsset, VaultAccount memory _totalBorrow) = previewAddInterest();
         _totalAssetAmount = _totalAsset.amount;
         _totalAssetShares = _totalAsset.shares;
         _totalBorrowAmount = _totalBorrow.amount;
@@ -151,13 +151,13 @@ abstract contract FraxlendPair is IERC20Metadata, FraxlendPairCore {
     /// @param _roundUp Whether to roundup during division
     /// @param _previewInterest Whether to simulate interest accrual
     /// @return _shares The number of shares
-    function toBorrowShares(
-        uint256 _amount,
-        bool _roundUp,
-        bool _previewInterest
-    ) external view returns (uint256 _shares) {
+    function toBorrowShares(uint256 _amount, bool _roundUp, bool _previewInterest)
+        external
+        view
+        returns (uint256 _shares)
+    {
         if (_previewInterest) {
-            (, , , , , VaultAccount memory _totalBorrow) = previewAddInterest();
+            (,,,,, VaultAccount memory _totalBorrow) = previewAddInterest();
             _shares = _totalBorrow.toShares(_amount, _roundUp);
         } else {
             _shares = totalBorrow.toShares(_amount, _roundUp);
@@ -169,13 +169,13 @@ abstract contract FraxlendPair is IERC20Metadata, FraxlendPairCore {
     /// @param _roundUp Whether to roundup during division
     /// @param _previewInterest Whether to simulate interest accrual
     /// @return _amount The amount of asset
-    function toBorrowAmount(
-        uint256 _shares,
-        bool _roundUp,
-        bool _previewInterest
-    ) external view returns (uint256 _amount) {
+    function toBorrowAmount(uint256 _shares, bool _roundUp, bool _previewInterest)
+        external
+        view
+        returns (uint256 _amount)
+    {
         if (_previewInterest) {
-            (, , , , , VaultAccount memory _totalBorrow) = previewAddInterest();
+            (,,,,, VaultAccount memory _totalBorrow) = previewAddInterest();
             _amount = _totalBorrow.toAmount(_shares, _roundUp);
         } else {
             _amount = totalBorrow.toAmount(_shares, _roundUp);
@@ -187,13 +187,13 @@ abstract contract FraxlendPair is IERC20Metadata, FraxlendPairCore {
     /// @param _roundUp Whether to round up after division
     /// @param _previewInterest Whether to preview interest accrual before calculation
     /// @return _amount The amount of asset
-    function toAssetAmount(
-        uint256 _shares,
-        bool _roundUp,
-        bool _previewInterest
-    ) public view returns (uint256 _amount) {
+    function toAssetAmount(uint256 _shares, bool _roundUp, bool _previewInterest)
+        public
+        view
+        returns (uint256 _amount)
+    {
         if (_previewInterest) {
-            (, , , , VaultAccount memory _totalAsset, ) = previewAddInterest();
+            (,,,, VaultAccount memory _totalAsset,) = previewAddInterest();
             _amount = _totalAsset.toAmount(_shares, _roundUp);
         } else {
             _amount = totalAsset.toAmount(_shares, _roundUp);
@@ -205,13 +205,13 @@ abstract contract FraxlendPair is IERC20Metadata, FraxlendPairCore {
     /// @param _roundUp Whether to round up after division
     /// @param _previewInterest Whether to preview interest accrual before calculation
     /// @return _shares The number of shares (fTokens)
-    function toAssetShares(
-        uint256 _amount,
-        bool _roundUp,
-        bool _previewInterest
-    ) public view returns (uint256 _shares) {
+    function toAssetShares(uint256 _amount, bool _roundUp, bool _previewInterest)
+        public
+        view
+        returns (uint256 _shares)
+    {
         if (_previewInterest) {
-            (, , , , VaultAccount memory _totalAsset, ) = previewAddInterest();
+            (,,,, VaultAccount memory _totalAsset,) = previewAddInterest();
             _shares = _totalAsset.toShares(_amount, _roundUp);
         } else {
             _shares = totalAsset.toShares(_amount, _roundUp);
@@ -231,31 +231,25 @@ abstract contract FraxlendPair is IERC20Metadata, FraxlendPairCore {
     }
 
     function totalAssets() external view returns (uint256) {
-        (, , , , VaultAccount memory _totalAsset, ) = previewAddInterest();
+        (,,,, VaultAccount memory _totalAsset,) = previewAddInterest();
         return _totalAsset.amount;
     }
 
     function maxDeposit(address _receiver) public view returns (uint256 _maxAssets) {
-        (, , , , VaultAccount memory _totalAsset, ) = previewAddInterest();
+        (,,,, VaultAccount memory _totalAsset,) = previewAddInterest();
         _maxAssets = _totalAsset.amount >= depositLimit ? 0 : depositLimit - _totalAsset.amount;
     }
 
     function maxMint(address _receiver) external view returns (uint256 _maxShares) {
-        (, , , , VaultAccount memory _totalAsset, ) = previewAddInterest();
+        (,,,, VaultAccount memory _totalAsset,) = previewAddInterest();
         uint256 _maxDeposit = _totalAsset.amount >= depositLimit ? 0 : depositLimit - _totalAsset.amount;
         _maxShares = _totalAsset.toShares(_maxDeposit, false);
     }
 
     function maxWithdraw(address _owner) external view returns (uint256 _maxAssets) {
         if (isWithdrawPaused) return 0;
-        (
-            ,
-            ,
-            uint256 _feesShare,
-            ,
-            VaultAccount memory _totalAsset,
-            VaultAccount memory _totalBorrow
-        ) = previewAddInterest();
+        (,, uint256 _feesShare,, VaultAccount memory _totalAsset, VaultAccount memory _totalBorrow) =
+            previewAddInterest();
         // Get the owner balance and include the fees share if owner is this contract
         uint256 _ownerBalance = _owner == address(this) ? balanceOf(_owner) + _feesShare : balanceOf(_owner);
 
@@ -267,14 +261,8 @@ abstract contract FraxlendPair is IERC20Metadata, FraxlendPairCore {
 
     function maxRedeem(address _owner) external view returns (uint256 _maxShares) {
         if (isWithdrawPaused) return 0;
-        (
-            ,
-            ,
-            uint256 _feesShare,
-            ,
-            VaultAccount memory _totalAsset,
-            VaultAccount memory _totalBorrow
-        ) = previewAddInterest();
+        (,, uint256 _feesShare,, VaultAccount memory _totalAsset, VaultAccount memory _totalBorrow) =
+            previewAddInterest();
 
         // Calculate the total shares available
         uint256 _totalAssetsAvailable = _totalAssetAvailable(_totalAsset, _totalBorrow);
@@ -307,10 +295,7 @@ abstract contract FraxlendPair is IERC20Metadata, FraxlendPairCore {
     /// @param newOracle The new oracle address
     /// @param newMaxOracleDeviation The new max oracle deviation
     event SetOracleInfo(
-        address oldOracle,
-        uint32 oldMaxOracleDeviation,
-        address newOracle,
-        uint32 newMaxOracleDeviation
+        address oldOracle, uint32 oldMaxOracleDeviation, address newOracle, uint32 newMaxOracleDeviation
     );
 
     /// @notice The ```setOracleInfo``` function sets the oracle data
@@ -321,10 +306,7 @@ abstract contract FraxlendPair is IERC20Metadata, FraxlendPairCore {
         if (isOracleSetterRevoked) revert SetterRevoked();
         ExchangeRateInfo memory _exchangeRateInfo = exchangeRateInfo;
         emit SetOracleInfo(
-            _exchangeRateInfo.oracle,
-            _exchangeRateInfo.maxOracleDeviation,
-            _newOracle,
-            _newMaxOracleDeviation
+            _exchangeRateInfo.oracle, _exchangeRateInfo.maxOracleDeviation, _newOracle, _newMaxOracleDeviation
         );
         _exchangeRateInfo.oracle = _newOracle;
         _exchangeRateInfo.maxOracleDeviation = _newMaxOracleDeviation;
