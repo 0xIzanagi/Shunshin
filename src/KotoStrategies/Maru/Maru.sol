@@ -6,18 +6,16 @@ pragma solidity 0.8.23;
 ///@author Koto Protocol
 ///@notice
 
-import {FraxlendPair} from "./Fraxlend/FraxlendPair.sol";
+import {IFraxlendPair} from "./Fraxlend/interfaces/IFraxlendPair.sol";
 import {IMaker} from "./interfaces/IMaker.sol";
 import {BaseStrategy} from "../../Vaults/BaseStrategy.sol";
 
-contract Maru is BaseStrategy, FraxlendPair {
-    constructor(
-        address _asset,
-        string memory _name,
-        bytes memory _configData,
-        bytes memory _immutables,
-        bytes memory _customConfigData
-    ) BaseStrategy(_asset, _name) FraxlendPair(_configData, _immutables, _customConfigData) {}
+contract Maru is BaseStrategy {
+    IFraxlendPair public immutable pair;
+
+    constructor(address _asset, string memory _name, address _pair) BaseStrategy(_asset, _name) {
+        pair = IFraxlendPair(_pair);
+    }
 
     function _deployFunds(uint256 _amount) internal virtual override {}
 
