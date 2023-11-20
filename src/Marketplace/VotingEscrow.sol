@@ -128,7 +128,6 @@ contract VotingEscrow is IVotingEscrow {
         } else {
             return _approved[_owner][_user];
         }
-        
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -403,6 +402,7 @@ contract VotingEscrow is IVotingEscrow {
 
     /// @notice Extend the unlock time for `address sender`
     /// @param _lock_duration New number of seconds until tokens unlock
+    /// TODO: add protection so someone just can't infinetly extend someone elses lock
     function increase_unlock_time(address sender, uint256 _lock_duration) external nonreentrant {
         LockedBalance memory _locked = locked[sender];
         uint256 unlock_time = (block.timestamp + _lock_duration) / WEEK * WEEK; // Locktime is rounded down to weeks
@@ -410,7 +410,7 @@ contract VotingEscrow is IVotingEscrow {
         require(_locked.end > block.timestamp, "Lock expired");
         require(_locked.amount > 0, "Nothing is locked");
         require(unlock_time > _locked.end, "Can only increase lock duration");
-        require(unlock_time <= block.timestamp + MAXTIME, "Voting lock can be 4 years max");
+        require(unlock_time <= block.timestamp + MAXTIME, "Voting lock can be 4 weeks max");
 
         _deposit_for(sender, 0, unlock_time, _locked, DepositType.INCREASE_UNLOCK_TIME);
     }

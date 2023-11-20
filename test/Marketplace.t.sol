@@ -29,106 +29,163 @@ contract MarketPlaceTest is Test {
         ve = new VotingEscrow(address(mock));
         bribeFactory = new BribeFactory(address(ve));
         voter = new Voter(address(ve), address(factory), address(gaugeFactory), address(bribeFactory));
+        mock.mint(address(this), 1_000_000 ether);
     }
 
     // ================== Voting Escrow Tests ================== \\
 
     function testApprove() public {}
 
-    function testSetTeam() public {}
+    function testSetTeam(address x) public {
+        vm.assume(x != address(this));
+        vm.prank(x);
+        vm.expectRevert();
+        ve.setTeam(address(0x01));
+        assertEq(ve.team(), address(this));
 
-    function testGetSlope() public {}
+        ve.setTeam(address(0x02));
+        assertEq(ve.team(), address(0x02));
+    }
 
-    function testUserHistory() public {}
+    // function testGetSlope() public {}
 
-    function testLockEnd() public {}
+    // function testUserHistory() public {}
 
-    function testCheckpoint() public {}
+    // function testLockEnd() public {}
 
-    function testDepositFor() public {}
+    // function testCheckpoint() public {}
 
-    function testCreateLock() public {}
+    function testDepositFor() public {
+        uint256 time = 4 weeks;
+        mock.approve(address(ve), type(uint256).max);
+        ve.create_lock(1000 ether, time);
+        ve.deposit_for(address(this), 1_000 ether);
+        assertApproxEqRel(ve.balanceOfNFT(address(this)), 2_000 ether, 1 ether);
+        assertApproxEqRel(ve.totalSupply(), 2_000 ether, 1 ether);
+    }
 
-    function testCreateLockFor() public {}
+    function testCreateLock() public {
+        uint256 time = 4 weeks;
+        mock.approve(address(ve), type(uint256).max);
+        ve.create_lock(1000 ether, time);
+        assertApproxEqRel(ve.balanceOfNFT(address(this)), 1_000 ether, 1 ether);
+        assertApproxEqRel(ve.totalSupply(), 1_000 ether, 1 ether);
+    }
 
-    function testIncreaseAmount() public {}
+    function testCreateLockFor() public {
+        uint256 time = 4 weeks;
+        mock.approve(address(ve), type(uint256).max);
+        ve.create_lock_for(1_000 ether, time, address(0x03));
+        assertApproxEqRel(ve.balanceOfNFT(address(0x03)), 1_000 ether, 1 ether);
+        assertApproxEqRel(ve.totalSupply(), 1_000 ether, 1 ether);
+    }
 
-    function testWithdraw() public {}
+    function testIncreaseAmount() public {
+        uint256 time = 1 weeks;
+        mock.approve(address(ve), type(uint256).max);
+        ve.create_lock_for(1_000 ether, time, address(0x03));
+        uint256 end = ve.locked__end(address(0x03));
+        ve.increase_amount(address(0x03), 1_000 ether);
+        assertApproxEqRel(ve.balanceOfNFT(address(0x03)), 2_000 ether, 1 ether);
+        assertApproxEqRel(ve.totalSupply(), 2_000 ether, 1 ether);
+        assertEq(ve.locked__end(address(0x03)), end);
+    }
 
-    function testBalanceOf() public {}
+    function testIncreaseUnlockTime() public {
+        uint256 time = 1 weeks;
+        mock.approve(address(ve), type(uint256).max);
+        ve.create_lock(1_000 ether, time);
+        uint256 end = ve.locked__end(address(this));
+        ve.increase_unlock_time(address(this), 4 weeks);
+        assertEq(ve.locked__end(address(this)), 4 weeks);
+        assertGt(ve.locked__end(address(this)), end);
+    }
 
-    function testBalanceOfAt() public {}
+    function testWithdraw() public {
+        uint256 time = 1 weeks;
+        mock.approve(address(ve), type(uint256).max);
+        ve.create_lock(1_000 ether, time);
+        uint256 pre = mock.balanceOf(address(this));
+        vm.warp(2 weeks);
+        ve.withdraw(address(this));
+        assertEq(ve.totalSupply(), 0);
+       assertEq(mock.balanceOf(address(ve)), 0);
+       assertEq(mock.balanceOf(address(this)), pre + 1000 ether);
+    }
 
-    function testTotalSupplyAt() public {}
+    // function testBalanceOf() public {}
 
-    function testTotalSupply() public {}
+    // function testBalanceOfAt() public {}
 
-    function testSetVoter() public {}
+    // function testTotalSupplyAt() public {}
 
-    function testVoting() public {}
+    // function testTotalSupply() public {}
 
-    function testAbstain() public {}
+    // function testSetVoter() public {}
 
-    function testAttach() public {}
+    // function testVoting() public {}
 
-    function testDetach() public {}
+    // function testAbstain() public {}
 
+    // function testAttach() public {}
 
-    // ====================== Voter Tests ====================== \\
+    // function testDetach() public {}
 
-    function testInitialize() public {}
+    // // ====================== Voter Tests ====================== \\
 
-    function testSetGov() public {}
+    // function testInitialize() public {}
 
-    function testSetCouncil() public {}
+    // function testSetGov() public {}
 
-    function testReset() public {}
+    // function testSetCouncil() public {}
 
-    function testPoke() public {}
+    // function testReset() public {}
 
-    function testVote() public {}
+    // function testPoke() public {}
 
-    function testWhitelist() public {}
+    // function testVote() public {}
 
-    function testCreateGauge() public {}
+    // function testWhitelist() public {}
 
-    function testKillGauge() public {}
+    // function testCreateGauge() public {}
 
-    function testReviveGauge() public {}
+    // function testKillGauge() public {}
 
-    function testUpdates() public {}
+    // function testReviveGauge() public {}
 
-    function testClaimRewards() public {}
+    // function testUpdates() public {}
 
-    function testClaimBribes() public {}
+    // function testClaimRewards() public {}
 
-    function testDistribute() public {}
+    // function testClaimBribes() public {}
 
-    function testNotifyRewardsVoter() public {}
+    // function testDistribute() public {}
 
-    // ====================== Bribe Tests ====================== \\
+    // function testNotifyRewardsVoter() public {}
 
-    function testGetReward() public {}
+    // // ====================== Bribe Tests ====================== \\
 
-    function testGetRewardForOwner() public {}
+    // function testGetReward() public {}
 
-    function testDeposit() public {}
+    // function testGetRewardForOwner() public {}
 
-    function testWithdrawBribe() public {}
+    // function testDeposit() public {}
 
-    function testNotifyBribe() public {}
+    // function testWithdrawBribe() public {}
 
-    function testSwapOutReward() public {}
+    // function testNotifyBribe() public {}
 
-    // ====================== Gauge Tests ====================== \\
+    // function testSwapOutReward() public {}
 
-    function testGetRewardGauge() public {}
+    // // ====================== Gauge Tests ====================== \\
 
-    function testDepositGauge() public {}
+    // function testGetRewardGauge() public {}
 
-    function testWithdrawGauge() public {}
+    // function testDepositGauge() public {}
 
-    function testNotifyGauge() public {}
+    // function testWithdrawGauge() public {}
 
-    function testDepositForGauge() public {}
+    // function testNotifyGauge() public {}
+
+    // function testDepositForGauge() public {}
 }
