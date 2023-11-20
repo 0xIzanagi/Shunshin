@@ -16,8 +16,6 @@ contract Gauge is ReentrancyGuard {
     address public immutable rewardToken;
     address public immutable voter;
 
-    bool public immutable isVault;
-
     uint256 private constant DURATION = 7 days;
     uint256 private constant PRECISION = 1e18;
 
