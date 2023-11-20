@@ -37,6 +37,8 @@ contract Voter is IVoter {
     mapping(address => bool) public isWhitelisted;
     mapping(address => bool) public isAlive;
 
+    event DistributeReward(address indexed caller, address gauge, uint256 claimable);
+    event NotifyReward(address indexed caller, address base, uint256 amount);
     event GaugeCreated(address indexed gauge, address creator, address indexed external_bribe, address indexed pool);
     event Voted(address indexed voter, address indexed owner, uint256 weight);
     event Abstained(uint256 tokenId, uint256 weight);
@@ -175,14 +177,14 @@ contract Voter is IVoter {
         usedWeights[_sender] = uint256(_usedWeight);
     }
 
-    function vote(address sender, address[] calldata _poolVote, uint256[] calldata _weights)
+    function vote(address sender, address[] calldata _vaultVote, uint256[] calldata _weights)
         external
         onlyNewEpoch(sender)
     {
         require(IVotingEscrow(_ve).isApproved(msg.sender, sender));
-        require(_poolVote.length == _weights.length);
+        require(_vaultVote.length == _weights.length);
         lastVoted[sender] = block.timestamp;
-        _vote(sender, _poolVote, _weights);
+        _vote(sender, _vaultVote, _weights);
     }
 
     function whitelist(address _token) public {
@@ -199,18 +201,14 @@ contract Voter is IVoter {
     function createGauge(address _vault) external returns (address) {
         require(gauges[_vault] == address(0x0), "exists");
         address[] memory allowedRewards = new address[](1);
-        bool isVault = IFactory(factory).isVault(_vault); //Add into the vault factory a mapping of all created vaults for this check.
-        address tokenA;
-        address tokenB;
+        bool isVault = IFactory(factory).isVault(_vault); 
 
         if (isVault) {
             allowedRewards[0] = base;
         }
 
         if (msg.sender != governor) {
-            // gov can create for any pool, even non-Velodrome pairs
             require(isVault, "!_vault");
-            require(isWhitelisted[tokenA] && isWhitelisted[tokenB], "!whitelisted");
         }
 
         address _external_bribe = IBribeFactory(bribefactory).createExternalBribe(allowedRewards);
@@ -243,30 +241,6 @@ contract Voter is IVoter {
         //emit GaugeRevived(_gauge);
     }
 
-    function attachTokenToGauge(address _sender, address account) external {
-        require(isGauge[msg.sender]);
-        require(isAlive[msg.sender]); // killed gauges cannot attach tokens to themselves
-        IVotingEscrow(_ve).attach(account);
-        emit Attach(account, msg.sender, 0);
-    }
-
-    function emitDeposit(uint256 tokenId, address account, uint256 amount) external {
-        require(isGauge[msg.sender]);
-        require(isAlive[msg.sender]);
-        emit Deposit(account, msg.sender, tokenId, amount);
-    }
-
-    function detachTokenFromGauge(uint256 tokenId, address account) external {
-        require(isGauge[msg.sender]);
-        if (tokenId > 0) IVotingEscrow(_ve).detach(account);
-        emit Detach(account, msg.sender, tokenId);
-    }
-
-    function emitWithdraw(uint256 tokenId, address account, uint256 amount) external {
-        require(isGauge[msg.sender]);
-        emit Withdraw(account, msg.sender, tokenId, amount);
-    }
-
     function length() external view returns (uint256) {
         return vaults.length;
     }
@@ -281,7 +255,7 @@ contract Voter is IVoter {
         if (_ratio > 0) {
             index += _ratio;
         }
-        //emit NotifyReward(msg.sender, base, amount);
+        emit NotifyReward(msg.sender, base, amount);
     }
 
     function updateFor(address[] memory _gauges) external {
@@ -342,7 +316,7 @@ contract Voter is IVoter {
         if (_claimable > IGauge(_gauge).left() && _claimable / DURATION > 0) {
             claimable[_gauge] = 0;
             IGauge(_gauge).notifyRewardAmount(_claimable);
-            //emit DistributeReward(msg.sender, _gauge, _claimable);
+            emit DistributeReward(msg.sender, _gauge, _claimable);
         }
     }
 
