@@ -77,7 +77,7 @@ contract VotingEscrow is IVotingEscrow {
     uint256 internal tokenId;
 
     /// @notice Contract constructor
-    /// @param token_addr `VELO` token address
+    /// @param token_addr `Koto` token address
     constructor(address token_addr) {
         token = token_addr;
         voter = msg.sender;
