@@ -17,14 +17,14 @@ contract Maru is BaseStrategy {
         pair = IFraxlendPair(_pair);
     }
 
-    /// @notice deposit into the fraxlend pool in order to start receiving yield. Users receive an equavilant amount of tokens 
+    /// @notice deposit into the fraxlend pool in order to start receiving yield. Users receive an equavilant amount of tokens
     /// as if they were depositing into the pool directly. These tokens are the ones that will be used to stake within gauges
-    /// in order to receive additional rewards. 
+    /// in order to receive additional rewards.
     function _deployFunds(uint256 _amount) internal virtual override {
         pair.deposit(_amount, address(this));
     }
 
-    /// @notice withdraw funds from the fraxlend pair to return back to the user. 
+    /// @notice withdraw funds from the fraxlend pair to return back to the user.
     function _freeFunds(uint256 _amount) internal virtual override {
         pair.redeem(_amount, address(this), address(this));
     }

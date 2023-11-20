@@ -201,7 +201,7 @@ contract Voter is IVoter {
     function createGauge(address _vault) external returns (address) {
         require(gauges[_vault] == address(0x0), "exists");
         address[] memory allowedRewards = new address[](1);
-        bool isVault = IFactory(factory).isVault(_vault); 
+        bool isVault = IFactory(factory).isVault(_vault);
 
         if (isVault) {
             allowedRewards[0] = base;
@@ -212,7 +212,7 @@ contract Voter is IVoter {
         }
 
         address _external_bribe = IBribeFactory(bribefactory).createExternalBribe(allowedRewards);
-        address _gauge = IGaugeFactory(gaugefactory).createGauge(_vault, _external_bribe, _ve, isVault, allowedRewards);
+        address _gauge = IGaugeFactory(gaugefactory).createGauge(_vault, base); // Create a gauge where the vault token is the staking token and Koto is the reward
 
         IERC20(base).approve(_gauge, type(uint256).max);
         external_bribes[_gauge] = _external_bribe;

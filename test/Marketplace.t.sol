@@ -24,10 +24,11 @@ contract MarketPlaceTest is Test {
     function setUp() public {
         mock = new ERC20Mock();
         mockReward = new ERC20Mock();
-        bribeFactory = new BribeFactory();
+
         gaugeFactory = new GaugeFactory();
         factory = new VaultFactory("factory", address(this), address(this));
         ve = new VotingEscrow(address(mock));
+        bribeFactory = new BribeFactory(address(ve));
         voter = new Voter(address(ve), address(factory), address(gaugeFactory), address(bribeFactory));
     }
 }
