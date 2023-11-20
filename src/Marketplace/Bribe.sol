@@ -307,7 +307,7 @@ contract Bribe is IBribe {
     }
 
     function swapOutRewardToken(uint256 i, address oldToken, address newToken) external {
-        //require(msg.sender == IVotingEscrow(_ve).team(), "only team");
+        require(msg.sender == IVotingEscrow(_ve).team(), "only team");
         require(rewards[i] == oldToken);
         isReward[oldToken] = false;
         isReward[newToken] = true;

@@ -122,9 +122,13 @@ contract VotingEscrow is IVotingEscrow {
         return true;
     }
 
-    ///TODO: Implementation
     function isApproved(address _owner, address _user) external view returns (bool) {
-        return _approved[_owner][_user];
+        if (_owner == _user) {
+            return true;
+        } else {
+            return _approved[_owner][_user];
+        }
+        
     }
 
     /*//////////////////////////////////////////////////////////////

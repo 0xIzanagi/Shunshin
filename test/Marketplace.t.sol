@@ -24,11 +24,111 @@ contract MarketPlaceTest is Test {
     function setUp() public {
         mock = new ERC20Mock();
         mockReward = new ERC20Mock();
-
         gaugeFactory = new GaugeFactory();
         factory = new VaultFactory("factory", address(this), address(this));
         ve = new VotingEscrow(address(mock));
         bribeFactory = new BribeFactory(address(ve));
         voter = new Voter(address(ve), address(factory), address(gaugeFactory), address(bribeFactory));
     }
+
+    // ================== Voting Escrow Tests ================== \\
+
+    function testApprove() public {}
+
+    function testSetTeam() public {}
+
+    function testGetSlope() public {}
+
+    function testUserHistory() public {}
+
+    function testLockEnd() public {}
+
+    function testCheckpoint() public {}
+
+    function testDepositFor() public {}
+
+    function testCreateLock() public {}
+
+    function testCreateLockFor() public {}
+
+    function testIncreaseAmount() public {}
+
+    function testWithdraw() public {}
+
+    function testBalanceOf() public {}
+
+    function testBalanceOfAt() public {}
+
+    function testTotalSupplyAt() public {}
+
+    function testTotalSupply() public {}
+
+    function testSetVoter() public {}
+
+    function testVoting() public {}
+
+    function testAbstain() public {}
+
+    function testAttach() public {}
+
+    function testDetach() public {}
+
+
+    // ====================== Voter Tests ====================== \\
+
+    function testInitialize() public {}
+
+    function testSetGov() public {}
+
+    function testSetCouncil() public {}
+
+    function testReset() public {}
+
+    function testPoke() public {}
+
+    function testVote() public {}
+
+    function testWhitelist() public {}
+
+    function testCreateGauge() public {}
+
+    function testKillGauge() public {}
+
+    function testReviveGauge() public {}
+
+    function testUpdates() public {}
+
+    function testClaimRewards() public {}
+
+    function testClaimBribes() public {}
+
+    function testDistribute() public {}
+
+    function testNotifyRewardsVoter() public {}
+
+    // ====================== Bribe Tests ====================== \\
+
+    function testGetReward() public {}
+
+    function testGetRewardForOwner() public {}
+
+    function testDeposit() public {}
+
+    function testWithdrawBribe() public {}
+
+    function testNotifyBribe() public {}
+
+    function testSwapOutReward() public {}
+
+    // ====================== Gauge Tests ====================== \\
+
+    function testGetRewardGauge() public {}
+
+    function testDepositGauge() public {}
+
+    function testWithdrawGauge() public {}
+
+    function testNotifyGauge() public {}
+
+    function testDepositForGauge() public {}
 }
