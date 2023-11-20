@@ -47,14 +47,6 @@ contract MarketPlaceTest is Test {
         assertEq(ve.team(), address(0x02));
     }
 
-    // function testGetSlope() public {}
-
-    // function testUserHistory() public {}
-
-    // function testLockEnd() public {}
-
-    // function testCheckpoint() public {}
-
     function testDepositFor() public {
         uint256 time = 4 weeks;
         mock.approve(address(ve), type(uint256).max);
@@ -113,13 +105,15 @@ contract MarketPlaceTest is Test {
        assertEq(mock.balanceOf(address(this)), pre + 1000 ether);
     }
 
-    // function testBalanceOf() public {}
-
-    // function testBalanceOfAt() public {}
-
-    // function testTotalSupplyAt() public {}
-
-    // function testTotalSupply() public {}
+    function testBalanceDecay() public {
+        uint256 time = 1 weeks;
+        mock.approve(address(ve), type(uint256).max);
+        ve.create_lock(1_000 ether, time);
+        uint256 startingWeight = ve.balanceOfNFT(address(this));
+        vm.warp(100);
+        uint256 checkpointWeight = ve.balanceOfNFT(address(this));
+        assertGt(startingWeight, checkpointWeight);
+    }
 
     // function testSetVoter() public {}
 
