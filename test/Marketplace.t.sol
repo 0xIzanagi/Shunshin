@@ -101,8 +101,8 @@ contract MarketPlaceTest is Test {
         vm.warp(2 weeks);
         ve.withdraw(address(this));
         assertEq(ve.totalSupply(), 0);
-       assertEq(mock.balanceOf(address(ve)), 0);
-       assertEq(mock.balanceOf(address(this)), pre + 1000 ether);
+        assertEq(mock.balanceOf(address(ve)), 0);
+        assertEq(mock.balanceOf(address(this)), pre + 1000 ether);
     }
 
     function testBalanceDecay() public {
