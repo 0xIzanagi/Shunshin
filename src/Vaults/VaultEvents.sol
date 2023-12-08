@@ -56,7 +56,7 @@ abstract contract VaultEvents {
     event UpdateDepositLimit(uint256 limit);
     event UpdateDepositLimitModule(address indexed depositLimitModule);
     event UpdateWithdrawLimitModule(address indexed withdrawLimitModule);
-    //event UpdateDefaultQueue(address[MAX_QUEUE] newDefaultQueue);
+    event UpdateDefaultQueue(address[] newDefaultQueue);
     event UpdateUseDefaultQueue(bool useDefaultQueue);
     event UpdatedMaxDebtForStrategy(address indexed sender, address indexed strategy, uint256 maxDebt);
     event UpdateMinimumTotalIdle(uint256 minimumTotalIdle);

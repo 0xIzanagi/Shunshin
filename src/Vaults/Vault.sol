@@ -127,7 +127,19 @@ contract Vault is VaultErrors, VaultEvents {
         return _updateDebt(strategy, targetDebt);
     }
 
-    function shutdownVault() external {}
+    function shutdownVault() external {
+        _enforceRoles(msg.sender, Roles.EMERGENCY_MANAGER);
+        if (shutdown) revert VaultShutdown();
+        shutdown = true;
+        depositLimit = 0;
+        emit UpdateDepositLimit(0);
+        if (depositLimitModule != address(0)) {
+            depositLimitModule = address(0);
+            emit UpdateDepositLimitModule(address(0));
+        }
+        roles[msg.sender][Roles.DEBT_MANAGER] = true;
+        //emit Shutdown();
+    }
 
     function deposit(uint256 assets, address receiver) external returns (uint256) {
         return _deposit(msg.sender, receiver, assets);
@@ -174,6 +186,16 @@ contract Vault is VaultErrors, VaultEvents {
         emit RoleSet(recipient, role);
     }
 
+    function removeRole(address account, Roles role) external {}
+
+    function setOpenRole(Roles role) external {}
+
+    function closeOpenRole(Roles role) external {}
+
+    function transferRoleManger(address _roleManager) external {}
+
+    function acceptRoleManager() external {}
+
     function setDepositLimit(uint256 _depositLimit) external {
         if (shutdown) revert VaultShutdown();
         if (depositLimitModule != address(0)) revert UsingDepositModule();
@@ -181,6 +203,47 @@ contract Vault is VaultErrors, VaultEvents {
         depositLimit = _depositLimit;
         emit UpdateDepositLimit(_depositLimit);
     }
+
+    function setAccountant(address newAccountant) external {
+        _enforceRoles(msg.sender, Roles.ACCOUNTANT_MANAGER);
+        accountant = newAccountant;
+        emit UpdateAccountant(newAccountant);
+    }
+
+    function setDefaultQueue(address[] calldata newDefaultQueue) external {
+        if (newDefaultQueue.length > MAX_QUEUE) revert MaxQueue();
+        _enforceRoles(msg.sender, Roles.QUEUE_MANAGER);
+        address[10] memory _newQueue;
+        for (uint256 i = 0; i < newDefaultQueue.length; ++i) {
+            if (strategies[newDefaultQueue[i]].activation == 0) revert InactiveStrategy();
+            _newQueue[i] = newDefaultQueue[i];
+        }
+
+        defaultQueue = _newQueue;
+        emit UpdateDefaultQueue(newDefaultQueue);
+    }
+
+    function setUseDefaultQueue(bool _useDefaultQueue) external {
+        _enforceRoles(msg.sender, Roles.QUEUE_MANAGER);
+        useDefaultQueue = _useDefaultQueue;
+        emit UpdateUseDefaultQueue(_useDefaultQueue);
+    }
+
+    function setDepositLimitModule(address _depositLimitModule) external {
+        _enforceRoles(msg.sender, Roles.DEPOSIT_LIMIT_MANAGER);
+        if (depositLimit != type(uint256).max) revert UsingDepositLimit();
+        if (shutdown) revert VaultShutdown();
+        depositLimitModule = _depositLimitModule;
+        emit UpdateDepositLimitModule(_depositLimitModule);
+    }
+
+    function setWithdrawLimitModule(address _withdrawLimitModule) external {}
+
+    function setMinimumTotalIdle(uint256 _minimumTotalIdle) external {}
+
+    function setProfitMaxUnlockTime(uint256 _profitMaxUnlockTime) external {}
+
+
 
     // ====================================================== \\
     //                  EXTERNAL VIEW FUNCTIONS               \\

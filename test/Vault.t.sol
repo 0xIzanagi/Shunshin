@@ -6,9 +6,9 @@ import "forge-std/Test.sol";
 import {Vault, VaultEvents, VaultErrors} from "../src/Vaults/Vault.sol";
 import {ERC20Mock} from "oz/mocks/token/ERC20Mock.sol";
 
-///@dev Testing assumptions are placed out in order to help evaluate the potential 
+///@dev Testing assumptions are placed out in order to help evaluate the potential
 /// paths that a particular function could follow. Set up to be similar to a testing tree
-/// its intention is to help increase coverage and path testing. 
+/// its intention is to help increase coverage and path testing.
 
 contract VaultTest is Test {
     ERC20Mock public mock;
@@ -52,7 +52,7 @@ contract VaultTest is Test {
      *     Case 1: The user has the required role
      *     Case 2: The user does not have the required role and it is not an open role
      *     Case 3: The strategy has debt, but forces a shutdown of the strategy
-     *     Case 4: The strategy does not currently have debt. 
+     *     Case 4: The strategy does not currently have debt.
      *     Case 5: 3 + it does not force a shutdown.
      */
     function testRevokeStrategy() public {}
