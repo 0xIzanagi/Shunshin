@@ -53,6 +53,7 @@ abstract contract VaultEvents {
     event RoleStatusChanged(Roles indexed role, RoleStatusChange indexed status);
     event UpdateRoleManager(address indexed roleManager);
     event UpdateAccountant(address indexed accountant);
+    event UpdateDepositLimit(uint256 limit);
     event UpdateDepositLimitModule(address indexed depositLimitModule);
     event UpdateWithdrawLimitModule(address indexed withdrawLimitModule);
     //event UpdateDefaultQueue(address[MAX_QUEUE] newDefaultQueue);

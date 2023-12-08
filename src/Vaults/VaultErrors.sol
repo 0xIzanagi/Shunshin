@@ -13,10 +13,12 @@ abstract contract VaultErrors {
     error InvalidAsset();
     error InvalidStrategy();
     error InvalidTransfer();
+    error OnlyManager();
     error OnlyRole();
     error OverMaxDebt();
     error StrategyUnrealizedLosses();
     error VaultShutdown();
+    error UsingDepositModule();
     error ZeroAssets();
     error ZeroDeposit();
     error ZeroShares();

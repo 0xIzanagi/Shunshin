@@ -69,9 +69,9 @@ contract Vault is VaultErrors, VaultEvents {
     // ====================================================== \\
 
     mapping(address => StrategyParams) public strategies;
-    mapping(address => uint256) public balances;
+    mapping(address => uint256) private balances;
     mapping(address => mapping(address => uint256)) public allowance;
-    mapping(address => Roles) public roles;
+    mapping(address => mapping(Roles => bool)) public roles;
     mapping(Roles => bool) public openRoles;
 
     // ====================================================== \\
@@ -117,10 +117,10 @@ contract Vault is VaultErrors, VaultEvents {
         emit UpdatedMaxDebtForStrategy(msg.sender, strategy, newMaxDebt);
     }
 
-    function updateDebt(address strategy, uint256 targetDebt) external returns(uint256) {
+    function updateDebt(address strategy, uint256 targetDebt) external returns (uint256) {
         _enforceRoles(msg.sender, Roles.DEBT_MANAGER);
         return _updateDebt(strategy, targetDebt);
-    }   
+    }
 
     function shutdownVault() external {}
 
@@ -163,16 +163,34 @@ contract Vault is VaultErrors, VaultEvents {
     //                     SETTER FUNCTIONS                   \\
     // ====================================================== \\
 
+    function setRole(address recipient, Roles role) external {
+        if (msg.sender != roleManager) revert OnlyManager();
+        roles[recipient][role] = true;
+        emit RoleSet(recipient, role);
+    }
+
+    function setDepositLimit(uint256 _depositLimit) external {
+        if (shutdown) revert VaultShutdown();
+        if (depositLimitModule != address(0)) revert UsingDepositModule();
+        _enforceRoles(msg.sender, Roles.DEPOSIT_LIMIT_MANAGER);
+        depositLimit = _depositLimit;
+        emit UpdateDepositLimit(_depositLimit);
+    }
+
     // ====================================================== \\
     //                  EXTERNAL VIEW FUNCTIONS               \\
     // ====================================================== \\
+
+    function balanceOf(address owner) external view returns (uint256) {
+        return balances[owner];
+    }
 
     // ====================================================== \\
     //                    INTERNAL FUNCTIONS                  \\
     // ====================================================== \\
 
     function _enforceRoles(address account, Roles role) private view {
-        if (roles[account] != role && !openRoles[role]) revert OnlyRole();
+        if (!roles[account][role] && !openRoles[role]) revert OnlyRole();
     }
 
     function _spendAllowance(address owner, address spender, uint256 amount) private {
