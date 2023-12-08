@@ -107,7 +107,12 @@ contract Vault is VaultErrors, VaultEvents {
 
     function revokeStrategy(address strategy) external {
         _enforceRoles(msg.sender, Roles.REVOKE_STRATEGY_MANAGER);
-        _revokeStrategy(strategy);
+        _revokeStrategy(strategy, false);
+    }
+
+    function forceRevokeStrategy(address strategy) external {
+        _enforceRoles(msg.sender, Roles.FORCE_REVOKE_MANAGER);
+        _revokeStrategy(strategy, true);
     }
 
     function updateMaxDebtForStrategy(address strategy, uint256 newMaxDebt) external {
@@ -465,12 +470,12 @@ contract Vault is VaultErrors, VaultEvents {
         emit StrategyChanged(newStrategy, StrategyChangeType.ADDED);
     }
 
-    ///Note force (L 1001)
-    ///Note is this revoking the best way to do things?
-    function _revokeStrategy(address strategy) private {
+    function _revokeStrategy(address strategy, bool force) private {
         if (strategies[strategy].activation == 0) revert InactiveStrategy();
         uint256 loss;
+        ///Note if dept is greater than zero it should have to be forced to take on the loss, and should not be done by default.
         if (strategies[strategy].currentDebt != 0) {
+            if (!force) revert ForceRequired();
             loss = strategies[strategy].currentDebt;
             totalDebt -= loss;
             emit StrategyReported(strategy, 0, loss, 0, 0, 0, 0);

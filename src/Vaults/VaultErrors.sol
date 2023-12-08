@@ -6,6 +6,7 @@ abstract contract VaultErrors {
     error ActiveStrategy();
     error DepositLimit();
     error EquivilantDebt();
+    error ForceRequired();
     error InactiveStrategy();
     error InsufficentAllowance();
     error InsufficentBalance();

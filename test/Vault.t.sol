@@ -6,6 +6,10 @@ import "forge-std/Test.sol";
 import {Vault, VaultEvents, VaultErrors} from "../src/Vaults/Vault.sol";
 import {ERC20Mock} from "oz/mocks/token/ERC20Mock.sol";
 
+///@dev Testing assumptions are placed out in order to help evaluate the potential 
+/// paths that a particular function could follow. Set up to be similar to a testing tree
+/// its intention is to help increase coverage and path testing. 
+
 contract VaultTest is Test {
     ERC20Mock public mock;
     Vault public vault;
@@ -20,16 +24,38 @@ contract VaultTest is Test {
     }
 
     /**
-        Testing Assumptions: 
-            1. The caller grants the stated amount to the user
-            2. No other state is effected besides the caller -> spender allowance mapping 
-            3. If successful it will return true
+     * Testing Assumptions:
+     *         1. The caller grants the stated amount to the user
+     *         2. No other state is effected besides the caller -> spender allowance mapping
+     *         3. If successful it will return true
      */
     function testApprove(uint256 x, address y) public {
         bool result = vault.approve(y, x);
         assertEq(result, true);
         assertEq(vault.allowance(address(this), y), x);
     }
+
+    /**
+     * Testing Assumptions:
+     *         Case 1: The Caller has the necessary role
+     *         Case 2: The caller does not have the necessary role
+     *         Case 3: Case 1 + The address for the strategy is address(0) | address(vault)
+     *         Case 4: Case 1 + the strategy asset is not the same
+     *         Case 5: Case 1 + The asset is the same
+     *         Case 6: Case 1 + the strategy has not already been activiated
+     *         Case 7: Case 1 + the strategy has already been activiated.
+     */
+    function testAddStrategy() public {}
+
+    /**
+     * Testing Assumptions:
+     *     Case 1: The user has the required role
+     *     Case 2: The user does not have the required role and it is not an open role
+     *     Case 3: The strategy has debt, but forces a shutdown of the strategy
+     *     Case 4: The strategy does not currently have debt. 
+     *     Case 5: 3 + it does not force a shutdown.
+     */
+    function testRevokeStrategy() public {}
 
     /**
      * Testing Assumptions
@@ -120,10 +146,6 @@ contract VaultTest is Test {
     // function testIncreaseAllowance() public {}
 
     // function testDecreaseAllowance() public {}
-
-    // function testAddStrategy() public {}
-
-    // function testRevokeStrategy() public {}
 
     // function testRedeem() public {}
 
