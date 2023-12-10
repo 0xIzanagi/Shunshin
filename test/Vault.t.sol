@@ -12,27 +12,26 @@ import {ERC20Mock} from "oz/mocks/token/ERC20Mock.sol";
 /// its intention is to help increase coverage and path testing.
 
 /**
-    Testing Todo:
-    1. Open Role
-    2. Close Roles
-    3. DepositLimit 
-    4. Accountant
-    5. Set Default Queue
-    6. Set Depoist Limit Module
-    7. Set Withdraw Limit Module
-    8. Set Min total Idle
-    9. Set Profit Unlock Time
-    10. Increase Allowance
-    11. Decrease Allowance
-    12. Redeem 
-    13. Withdraw 
-    14. Add Strategy 
-    15. Revoke Strategy
-    16. Force Revoke Strategy
-    17. Shutdown Vault
-    18. Update Debt
-    19. Update max debt for strategy
-    
+ * Testing Todo:
+ *     1. Open Role
+ *     2. Close Roles
+ *     3. DepositLimit
+ *     4. Accountant
+ *     5. Set Default Queue
+ *     6. Set Depoist Limit Module
+ *     7. Set Withdraw Limit Module
+ *     8. Set Min total Idle
+ *     9. Set Profit Unlock Time
+ *     10. Increase Allowance
+ *     11. Decrease Allowance
+ *     12. Redeem
+ *     13. Withdraw
+ *     14. Add Strategy
+ *     15. Revoke Strategy
+ *     16. Force Revoke Strategy
+ *     17. Shutdown Vault
+ *     18. Update Debt
+ *     19. Update max debt for strategy
  */
 
 contract VaultTest is Test {

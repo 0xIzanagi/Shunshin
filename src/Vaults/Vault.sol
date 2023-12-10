@@ -8,7 +8,9 @@ pragma solidity 0.8.23;
 /// https://github.com/yearn/yearn-vaults-v3/blob/master/contracts/VaultV3.vy
 
 import {ERC20} from "oz/token/ERC20/ERC20.sol";
+import {IAccountant} from "./interfaces/IAccountant.sol";
 import {IDepositLimitModule} from "./interfaces/IDepositLimitModule.sol";
+import {IFactory} from "./interfaces/IFactory.sol";
 import {IStrategy} from "./interfaces/IStrategy.sol";
 import {IWithdrawLimitModule} from "./interfaces/IWithdrawLimitModule.sol";
 import {Math} from "oz/utils/math/Math.sol";
@@ -635,5 +637,118 @@ contract Vault is VaultErrors, VaultEvents {
     }
 
     ///Note Skipped
-    function _processReport(address strategy) private returns (uint256, uint256) {}
+    function _processReport(address strategy) private returns (uint256, uint256) {
+        if (strategies[strategy].activation == 0) revert InactiveStrategy();
+        _burnUnlockedShares();
+        uint256 strategyShares = IStrategy(strategy).balanceOf(address(this));
+        uint256 totalAssets = IStrategy(strategy).convertToAssets(strategyShares);
+        uint256 currentDebt = strategies[strategy].currentDebt;
+
+        uint256 gain;
+        uint256 loss;
+
+        if (totalAssets > currentDebt) {
+            gain = totalAssets - currentDebt;
+        } else {
+            loss = currentDebt - totalAssets;
+        }
+
+        uint256 totalFees;
+        uint256 totalRefunds;
+        uint256 protocolFees;
+        address protocolFeeReceipient;
+        address _accountant = accountant;
+
+        if (_accountant != address(0)) {
+            (totalFees, totalRefunds) = IAccountant(_accountant).report(strategy, gain, loss);
+            if (totalFees > 0) {
+                uint16 protocolFeeBps;
+                (protocolFeeBps, protocolFeeReceipient) = IFactory(factory).protocolFeeConfig();
+                if (protocolFeeBps > 0) {
+                    protocolFees = totalFees * uint256(protocolFeeBps) / MAX_BPS;
+                }
+            }
+        }
+
+        uint256 sharesToBurn;
+        uint256 accountantFeeShares;
+        uint256 protocolFeeShares;
+
+        if (loss + totalFees > 0) {
+            sharesToBurn += _convertToShares(loss + totalFees, Rounding.ROUND_UP);
+
+            if (totalFees > 0) {
+                accountantFeeShares = _convertToShares(totalFees - protocolFees, Rounding.ROUND_DOWN);
+                if (protocolFees > 0) {
+                    protocolFeeShares = _convertToShares(protocolFees, Rounding.ROUND_DOWN);
+                }
+            }
+        }
+        uint256 newlyLockedShares;
+        if (totalRefunds > 0) {
+            totalRefunds = Math.min(
+                totalRefunds, Math.min(asset.balanceOf(accountant), asset.allowance(accountant, address(this)))
+            );
+            asset.transferFrom(accountant, address(this), totalRefunds);
+            totalIdle += totalRefunds;
+        }
+
+        if (gain > 0) {
+            strategies[strategy].currentDebt += gain;
+            totalDebt += gain;
+        }
+
+        uint256 _profitMaxUnlockTime = profitMaxUnlockTime;
+
+        if (gain + totalRefunds > 0 && _profitMaxUnlockTime != 0) {
+            newlyLockedShares = _issueSharesForAmount(gain + totalRefunds, address(this));
+        }
+
+        if (loss > 0) {
+            strategies[strategy].currentDebt -= loss;
+            totalDebt -= loss;
+        }
+
+        uint256 previouslyLockedShares = balances[address(this)] - newlyLockedShares;
+        if (sharesToBurn > 0) {
+            sharesToBurn = Math.min(sharesToBurn, previouslyLockedShares + newlyLockedShares);
+            _burnShares(sharesToBurn, address(this));
+            uint256 sharesNotToLock = Math.min(sharesToBurn, newlyLockedShares);
+            newlyLockedShares -= sharesNotToLock;
+            previouslyLockedShares -= sharesToBurn - sharesNotToLock;
+        }
+
+        if (accountantFeeShares > 0) {
+            _issueShares(accountantFeeShares, _accountant);
+        }
+        if (protocolFeeShares > 0) {
+            _issueShares(protocolFeeShares, protocolFeeReceipient);
+        }
+        uint256 totalLockedShares = previouslyLockedShares + newlyLockedShares;
+        if (totalLockedShares > 0) {
+            uint256 previouslyLockedTime;
+            uint256 _fullProfitUnlockDate = fullProfitUnlockDate;
+            if (_fullProfitUnlockDate > block.timestamp) {
+                previouslyLockedTime = previouslyLockedShares * (_fullProfitUnlockDate - block.timestamp);
+            }
+            uint256 newProfitLockingPeriod =
+                (previouslyLockedTime + newlyLockedShares * _profitMaxUnlockTime) / totalLockedShares;
+            profitUnlockingRate = totalLockedShares * MAX_BPS_EXTENDED / newProfitLockingPeriod;
+            fullProfitUnlockDate = block.timestamp + newProfitLockingPeriod;
+            lastProfitUpdate = block.timestamp;
+        } else {
+            profitUnlockingRate = 0;
+        }
+        strategies[strategy].lastReport = block.timestamp;
+        emit StrategyReported(
+            strategy,
+            gain,
+            loss,
+            strategies[strategy].currentDebt,
+            _convertToAssets(protocolFees, Rounding.ROUND_DOWN),
+            _convertToAssets(totalFees, Rounding.ROUND_DOWN),
+            totalRefunds
+        );
+        return (gain, loss);
+    }
 }
