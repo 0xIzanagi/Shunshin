@@ -27,6 +27,7 @@ abstract contract VaultErrors {
     error WithdrawLimit();
     error ZeroAddress();
     error ZeroAssets();
+    error ZeroDebt();
     error ZeroDeposit();
     error ZeroShares();
     error ZeroWithdraw();

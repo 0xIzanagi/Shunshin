@@ -13,15 +13,16 @@ import {IDepositLimitModule} from "./interfaces/IDepositLimitModule.sol";
 import {IFactory} from "./interfaces/IFactory.sol";
 import {IStrategy} from "./interfaces/IStrategy.sol";
 import {IWithdrawLimitModule} from "./interfaces/IWithdrawLimitModule.sol";
+import {IVault} from "./interfaces/IVault.sol";
 import {Math} from "oz/utils/math/Math.sol";
 import {VaultErrors} from "./VaultErrors.sol";
 import {VaultEvents} from "./VaultEvents.sol";
 
 ///Todo
 /// 1. Visability of storage variables
-/// 2. Create Vault Interface
+/// 2. Add storage visability function calls to interface
 
-contract Vault is VaultErrors, VaultEvents {
+contract Vault is IVault, VaultErrors, VaultEvents {
     struct StrategyParams {
         uint256 activation;
         uint256 lastReport;
@@ -151,9 +152,40 @@ contract Vault is VaultErrors, VaultEvents {
         return _mint(msg.sender, receiver, shares);
     }
 
-    function withdraw() external {}
+    function processReport(address strategy) external returns (uint256, uint256) {
+        _enforceRoles(msg.sender, Roles.REPORTING_MANAGER);
+        return _processReport(strategy);
+    }
 
-    function redeem() external {}
+    function buyDebt(address strategy, uint256 amount) external {
+        _enforceRoles(msg.sender, Roles.DEBT_PURCHASER);
+        if (strategies[strategy].activation == 0) revert InactiveStrategy();
+        uint256 currentDebt = strategies[strategy].currentDebt;
+        if (currentDebt == 0) revert ZeroDebt();
+        if (amount > currentDebt) {
+            amount = currentDebt;
+        }
+        uint256 shares = IStrategy(strategy).balanceOf(address(this)) * amount / currentDebt;
+        if (shares == 0) revert ZeroShares();
+        asset.transferFrom(msg.sender, address(this), amount);
+        strategies[strategy].currentDebt -= amount;
+        totalDebt -= amount;
+        totalIdle += amount;
+        emit DebtUpdated(strategy, currentDebt, currentDebt - amount);
+        ERC20(strategy).transfer(msg.sender, shares);
+        emit DebtPurchased(strategy, amount);
+    }
+
+    function withdraw(uint256 assets, address receiver, address owner, uint256 maxLoss, address[10] calldata strats) external returns(uint256) {
+        uint256 shares = _convertToShares(assets, Rounding.ROUND_UP);
+        _redeem(msg.sender, receiver, owner, assets, shares, maxLoss, strats);
+        return shares;
+    }
+
+    function redeem(uint256 shares, address receiver, address owner, uint256 maxLoss, address[10] calldata strats) external returns(uint256) {
+        uint256 assets = _convertToAssets(shares, Rounding.ROUND_DOWN);
+        return _redeem(msg.sender, receiver, owner, assets, shares, maxLoss, strats);
+    }
 
     function approve(address spender, uint256 amount) external returns (bool) {
         return _approve(msg.sender, spender, amount);
@@ -194,9 +226,17 @@ contract Vault is VaultErrors, VaultEvents {
         emit RoleRemoved(account, role);
     }
 
-    function setOpenRole(Roles role) external {}
+    function setOpenRole(Roles role) external {
+        if (msg.sender != roleManager) revert OnlyManager();
+        openRoles[role] = true;
+        emit RoleStatusChanged(role, RoleStatusChange.OPENED);
+    }
 
-    function closeOpenRole(Roles role) external {}
+    function closeOpenRole(Roles role) external {
+        if (msg.sender != roleManager) revert OnlyManager();
+        openRoles[role] = false;
+        emit RoleStatusChanged(role, RoleStatusChange.CLOSED);
+    }
 
     function transferRoleManger(address _roleManager) external {
         if (msg.sender != roleManager) revert OnlyManager();
@@ -521,7 +561,6 @@ contract Vault is VaultErrors, VaultEvents {
         IStrategy(strategy).redeem(sharesToRedeem, address(this), address(this));
     }
 
-    ///Note Skipped
     function _redeem(
         address sender,
         address receiver,
@@ -731,6 +770,7 @@ contract Vault is VaultErrors, VaultEvents {
         return newDebt;
     }
 
+    //Todo: cache to prevent stack too deep
     function _processReport(address strategy) private returns (uint256, uint256) {
         if (strategies[strategy].activation == 0) revert InactiveStrategy();
         _burnUnlockedShares();
