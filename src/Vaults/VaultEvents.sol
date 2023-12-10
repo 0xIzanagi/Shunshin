@@ -49,6 +49,7 @@ abstract contract VaultEvents {
         uint256 totalRefunds
     );
     event DebtUpdated(address indexed strategy, uint256 currentDebt, uint256 newDebt);
+    event RoleRemoved(address indexed account, Roles indexed role);
     event RoleSet(address indexed account, Roles indexed role);
     event RoleStatusChanged(Roles indexed role, RoleStatusChange indexed status);
     event UpdateRoleManager(address indexed roleManager);

@@ -4,11 +4,36 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
 import {Vault, VaultEvents, VaultErrors} from "../src/Vaults/Vault.sol";
+import {MockStrategy} from "./helpers/MockStrategy.sol";
 import {ERC20Mock} from "oz/mocks/token/ERC20Mock.sol";
 
 ///@dev Testing assumptions are placed out in order to help evaluate the potential
 /// paths that a particular function could follow. Set up to be similar to a testing tree
 /// its intention is to help increase coverage and path testing.
+
+/**
+    Testing Todo:
+    1. Open Role
+    2. Close Roles
+    3. DepositLimit 
+    4. Accountant
+    5. Set Default Queue
+    6. Set Depoist Limit Module
+    7. Set Withdraw Limit Module
+    8. Set Min total Idle
+    9. Set Profit Unlock Time
+    10. Increase Allowance
+    11. Decrease Allowance
+    12. Redeem 
+    13. Withdraw 
+    14. Add Strategy 
+    15. Revoke Strategy
+    16. Force Revoke Strategy
+    17. Shutdown Vault
+    18. Update Debt
+    19. Update max debt for strategy
+    
+ */
 
 contract VaultTest is Test {
     ERC20Mock public mock;
@@ -36,14 +61,78 @@ contract VaultTest is Test {
     }
 
     /**
+     * Test the transfer and acceptance of the role manager
+     *     Testing Assumptions:
+     */
+    function testRoleManagerTransfer(address y) public {
+        vm.assume(y != vault.roleManager());
+        vm.prank(y);
+        vm.expectRevert(VaultErrors.OnlyManager.selector);
+        vault.transferRoleManger(y);
+
+        vault.transferRoleManger(y);
+
+        vm.expectRevert(VaultErrors.OnlyManager.selector);
+        vault.acceptRoleManager();
+
+        vm.prank(y);
+        vault.acceptRoleManager();
+
+        assertEq(vault.roleManager(), y);
+    }
+
+    /**
      * Testing Assumptions:
-     *         Case 1: The Caller has the necessary role
-     *         Case 2: The caller does not have the necessary role
-     *         Case 3: Case 1 + The address for the strategy is address(0) | address(vault)
-     *         Case 4: Case 1 + the strategy asset is not the same
-     *         Case 5: Case 1 + The asset is the same
-     *         Case 6: Case 1 + the strategy has not already been activiated
-     *         Case 7: Case 1 + the strategy has already been activiated.
+     *     Case 1: The caller is the role manager
+     *         1. The input address should be given the given role
+     *     Case 2: The caller is not the role manager
+     *         1. The call should revert with the OnlyManager Error
+     */
+    function testSetRole(address y, address x) public {
+        vm.assume(x != vault.roleManager());
+        vault.setRole(y, VaultEvents.Roles.DEPOSIT_LIMIT_MANAGER);
+        assertEq(vault.roles(y, VaultEvents.Roles.DEPOSIT_LIMIT_MANAGER), true);
+
+        vm.prank(x);
+        vm.expectRevert(VaultErrors.OnlyManager.selector);
+        vault.setRole(y, VaultEvents.Roles.DEBT_MANAGER);
+        assertEq(vault.roles(y, VaultEvents.Roles.DEBT_MANAGER), false);
+    }
+
+    /**
+     * Testing Assumptions:
+     *     Case 1: The caller is the role manager
+     *             1. The call will not revert and the role will be set to false for the user
+     *     Case 2: The caller is not the role manager;
+     *             1. The call will revert.
+     */
+    function testRevokeRoles(address y, address pranker) public {
+        vm.assume(pranker != vault.roleManager());
+        vault.setRole(y, VaultEvents.Roles.ACCOUNTANT_MANAGER);
+        assertEq(vault.roles(y, VaultEvents.Roles.ACCOUNTANT_MANAGER), true);
+
+        vm.prank(pranker);
+        vm.expectRevert(VaultErrors.OnlyManager.selector);
+        vault.removeRole(y, VaultEvents.Roles.ACCOUNTANT_MANAGER);
+        assertEq(vault.roles(y, VaultEvents.Roles.ACCOUNTANT_MANAGER), true);
+
+        vault.removeRole(y, VaultEvents.Roles.ACCOUNTANT_MANAGER);
+        assertEq(vault.roles(y, VaultEvents.Roles.ACCOUNTANT_MANAGER), false);
+    }
+
+    function testOpenRole() public {}
+
+    function testCloseRole() public {}
+
+    /**
+     * Testing Assumptions:
+     *         Case 1: The caller has the role and the strategy is not activated
+     *         Case 2: The caller does not have the role and the strategy is not activated
+     *         Case 3: The caller has the role but the strategy is not activated
+     *         Case 4: The caller does not have the role and the strategy is not activated
+     *         Case 5: The address of the strategy input is address(0) || vault address
+     *         Case 6: The strategy is valid and the caller has the role and the default queue is not full
+     *         Caes 7: The strategy is valid and the caller has the role and the default queue is full
      */
     function testAddStrategy() public {}
 

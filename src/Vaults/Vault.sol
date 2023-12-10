@@ -54,7 +54,7 @@ contract Vault is VaultErrors, VaultEvents {
     address accountant;
     address depositLimitModule;
     address withdrawLimitModule;
-    address roleManager;
+    address public roleManager;
     address futureRoleManager;
     string public name;
     string public symbol;
@@ -186,15 +186,27 @@ contract Vault is VaultErrors, VaultEvents {
         emit RoleSet(recipient, role);
     }
 
-    function removeRole(address account, Roles role) external {}
+    function removeRole(address account, Roles role) external {
+        if (msg.sender != roleManager) revert OnlyManager();
+        roles[account][role] = false;
+        emit RoleRemoved(account, role);
+    }
 
     function setOpenRole(Roles role) external {}
 
     function closeOpenRole(Roles role) external {}
 
-    function transferRoleManger(address _roleManager) external {}
+    function transferRoleManger(address _roleManager) external {
+        if (msg.sender != roleManager) revert OnlyManager();
+        futureRoleManager = _roleManager;
+    }
 
-    function acceptRoleManager() external {}
+    function acceptRoleManager() external {
+        if (msg.sender != futureRoleManager) revert OnlyManager();
+        roleManager = futureRoleManager;
+        futureRoleManager = address(0);
+        emit UpdateRoleManager(msg.sender);
+    }
 
     function setDepositLimit(uint256 _depositLimit) external {
         if (shutdown) revert VaultShutdown();
@@ -534,7 +546,7 @@ contract Vault is VaultErrors, VaultEvents {
     function _revokeStrategy(address strategy, bool force) private {
         if (strategies[strategy].activation == 0) revert InactiveStrategy();
         uint256 loss;
-        ///Note if dept is greater than zero it should have to be forced to take on the loss, and should not be done by default.
+        ///Note if debt is greater than zero it should have to be forced to take on the loss, and should not be done by default.
         if (strategies[strategy].currentDebt != 0) {
             if (!force) revert ForceRequired();
             loss = strategies[strategy].currentDebt;
