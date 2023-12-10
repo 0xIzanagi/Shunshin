@@ -243,8 +243,6 @@ contract Vault is VaultErrors, VaultEvents {
 
     function setProfitMaxUnlockTime(uint256 _profitMaxUnlockTime) external {}
 
-
-
     // ====================================================== \\
     //                  EXTERNAL VIEW FUNCTIONS               \\
     // ====================================================== \\

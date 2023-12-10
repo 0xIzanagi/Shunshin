@@ -117,7 +117,64 @@ contract VaultTest is Test {
      *         Case 5: Receiver is address(0) or the vault address
      *             1. The call should not change any state and should revert with the Invalid Transfer Error
      */
-    function testTransferFrom() public {}
+    function testTransferFrom(uint256 x) public {
+        //Case 1
+        vm.assume(x > 0 && x < 10_000_000 ether);
+        mock.approve(address(vault), type(uint256).max);
+        vault.mint(10_000_000 ether, address(this));
+        vm.prank(alice);
+        vm.expectRevert(VaultErrors.InsufficentAllowance.selector);
+        vault.transferFrom(address(this), alice, x);
+        assertEq(vault.balanceOf(address(this)), 10_000_000 ether);
+        assertEq(vault.balanceOf(alice), 0);
+
+        //Case 2
+        vault.approve(alice, x);
+        assertEq(vault.allowance(address(this), alice), x);
+        vm.prank(alice);
+        vault.transferFrom(address(this), alice, x);
+        assertEq(vault.balanceOf(address(this)), 10_000_000 ether - x);
+        assertEq(vault.balanceOf(alice), x);
+        assertEq(vault.allowance(address(this), alice), 0);
+
+        //Case 3
+        vault.approve(alice, type(uint128).max);
+        uint256 ownerPre = vault.balanceOf(address(this));
+        uint256 alicePre = vault.balanceOf(alice);
+        vm.prank(alice);
+        vm.expectRevert(VaultErrors.InsufficentBalance.selector);
+        vault.transferFrom(address(this), alice, 10_000_000 ether);
+        assertEq(vault.balanceOf(address(this)), ownerPre);
+        assertEq(vault.balanceOf(alice), alicePre);
+        assertEq(vault.allowance(address(this), alice), type(uint128).max);
+
+        //Case 4
+        vault.approve(alice, 100);
+        vm.prank(alice);
+        vm.expectRevert(VaultErrors.InsufficentAllowance.selector);
+        vault.transferFrom(address(this), alice, 10_000_000 ether);
+        assertEq(vault.balanceOf(address(this)), ownerPre);
+        assertEq(vault.balanceOf(alice), alicePre);
+        assertEq(vault.allowance(address(this), alice), 100);
+
+        //Case 5 A
+        vault.approve(alice, type(uint128).max);
+        vm.prank(alice);
+        vm.expectRevert(VaultErrors.InvalidTransfer.selector);
+        vault.transferFrom(address(this), address(vault), ownerPre);
+        assertEq(vault.balanceOf(address(this)), ownerPre);
+        assertEq(vault.balanceOf(alice), alicePre);
+        assertEq(vault.allowance(address(this), alice), type(uint128).max);
+
+        //Case 5 B
+        vault.approve(alice, type(uint128).max);
+        vm.prank(alice);
+        vm.expectRevert(VaultErrors.InvalidTransfer.selector);
+        vault.transferFrom(address(this), address(0), ownerPre);
+        assertEq(vault.balanceOf(address(this)), ownerPre);
+        assertEq(vault.balanceOf(alice), alicePre);
+        assertEq(vault.allowance(address(this), alice), type(uint128).max);
+    }
 
     /**
      * Testing Assumptions:
