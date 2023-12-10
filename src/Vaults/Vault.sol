@@ -530,7 +530,102 @@ contract Vault is VaultErrors, VaultEvents {
         uint256 sharesToBurn,
         uint256 maxLoss,
         address[MAX_QUEUE] calldata strats
-    ) private returns (uint256) {}
+    ) private returns (uint256) {
+        if (receiver == address(0)) revert ZeroAddress();
+        if (maxLoss <= MAX_BPS) revert MaxLoss();
+
+        if (withdrawLimitModule != address(0)) {
+            if (assets <= _maxWithdraw(owner, maxLoss, strats)) revert WithdrawLimit();
+        }
+
+        uint256 shares = sharesToBurn;
+        uint256 sharesBalance = balances[owner];
+
+        if (shares == 0) revert ZeroShares();
+        if (shares > sharesBalance) revert InsufficentBalance();
+
+        if (sender != owner) {
+            _spendAllowance(owner, sender, sharesToBurn);
+        }
+
+        uint256 requestedAssets = assets;
+        uint256 currentTotalIdle = totalIdle;
+
+        if (requestedAssets > currentTotalIdle) {
+            address[10] memory _strategies = defaultQueue;
+            if (strats[0] != address(0) && !useDefaultQueue) {
+                _strategies = strats;
+            }
+            uint256 currentTotalDebt = totalDebt;
+            uint256 assetsNeeded = requestedAssets - currentTotalIdle;
+            uint256 assetsToWithdraw;
+            uint256 previousBalance = asset.balanceOf(address(this));
+
+            for (uint256 i = 0; i < MAX_QUEUE; ++i) {
+                if (_strategies[i] == address(0)) {
+                    continue;
+                }
+                if (strategies[_strategies[i]].activation == 0) revert InactiveStrategy();
+                uint256 currentDebt = strategies[_strategies[i]].currentDebt;
+                assetsToWithdraw = Math.min(assetsNeeded, currentDebt);
+                uint256 maxWithdraw =
+                    IStrategy(_strategies[i]).convertToAssets(IStrategy(_strategies[i]).maxRedeem(address(this)));
+                uint256 unrealizedLossesShare = _assessShareOfUnrealizedLosses(_strategies[i], assetsToWithdraw);
+                if (unrealizedLossesShare > 0) {
+                    if (maxWithdraw < assetsToWithdraw - unrealizedLossesShare) {
+                        uint256 wanted = assetsToWithdraw - unrealizedLossesShare;
+                        unrealizedLossesShare = unrealizedLossesShare * maxWithdraw / wanted;
+                    }
+                    assetsToWithdraw -= unrealizedLossesShare;
+                    requestedAssets -= unrealizedLossesShare;
+                    assetsNeeded -= unrealizedLossesShare;
+                    currentTotalDebt -= unrealizedLossesShare;
+                    if (maxWithdraw == 0 && unrealizedLossesShare > 0) {
+                        uint256 _newDebt = currentDebt - unrealizedLossesShare;
+                        strategies[_strategies[i]].currentDebt = _newDebt;
+                        emit DebtUpdated(_strategies[i], currentDebt, _newDebt);
+                    }
+                }
+                assetsToWithdraw = Math.min(assetsToWithdraw, maxWithdraw);
+                if (assetsToWithdraw == 0) {
+                    continue;
+                }
+                _withdrawFromStrategy(_strategies[i], assetsToWithdraw);
+                uint256 postBalance = asset.balanceOf(address(this));
+                uint256 withdrawn = postBalance - previousBalance;
+                uint256 loss;
+                if (withdrawn > assetsToWithdraw) {
+                    if (withdrawn > currentDebt) {
+                        assetsToWithdraw = currentDebt;
+                    } else {
+                        assetsToWithdraw += (withdrawn - assetsToWithdraw);
+                    }
+                } else if (withdrawn < assetsToWithdraw) {
+                    loss = assetsToWithdraw - withdrawn;
+                }
+                currentTotalIdle += (assetsToWithdraw - loss);
+                requestedAssets -= loss;
+                currentTotalDebt -= assetsToWithdraw;
+                uint256 newDebt = currentDebt - (assetsToWithdraw + unrealizedLossesShare);
+                strategies[_strategies[i]].currentDebt = newDebt;
+                emit DebtUpdated(_strategies[i], currentDebt, newDebt);
+                if (requestedAssets <= currentTotalIdle) {
+                    break;
+                }
+                previousBalance = postBalance;
+                assetsNeeded -= assetsToWithdraw;
+            }
+            if (currentTotalDebt < requestedAssets) revert InsufficentVaultAssets();
+            totalDebt = currentTotalDebt;
+        }
+        if (assets > requestedAssets && maxLoss < MAX_BPS) {
+            if (assets - requestedAssets > assets * maxLoss / MAX_BPS) revert MaxLoss();
+        }
+        _burnShares(shares, owner);
+        asset.transfer(receiver, requestedAssets);
+        emit Withdraw(sender, receiver, owner, assets, shares);
+        return requestedAssets;
+    }
 
     function _addStrategy(address newStrategy) private {
         if (newStrategy == address(0) || newStrategy == address(this)) revert InvalidStrategy();
@@ -636,7 +731,6 @@ contract Vault is VaultErrors, VaultEvents {
         return newDebt;
     }
 
-    ///Note Skipped
     function _processReport(address strategy) private returns (uint256, uint256) {
         if (strategies[strategy].activation == 0) revert InactiveStrategy();
         _burnUnlockedShares();

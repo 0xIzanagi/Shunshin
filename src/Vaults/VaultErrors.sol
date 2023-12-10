@@ -11,9 +11,11 @@ abstract contract VaultErrors {
     error InsufficentAllowance();
     error InsufficentBalance();
     error InsufficentIdle();
+    error InsufficentVaultAssets();
     error InvalidAsset();
     error InvalidStrategy();
     error InvalidTransfer();
+    error MaxLoss();
     error MaxQueue();
     error OnlyManager();
     error OnlyRole();
@@ -22,6 +24,8 @@ abstract contract VaultErrors {
     error VaultShutdown();
     error UsingDepositModule();
     error UsingDepositLimit();
+    error WithdrawLimit();
+    error ZeroAddress();
     error ZeroAssets();
     error ZeroDeposit();
     error ZeroShares();
