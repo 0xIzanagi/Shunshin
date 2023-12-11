@@ -47,6 +47,70 @@ contract VaultTest is Test {
         vault.setDepositLimit(100_000_000 ether);
     }
 
+    function testSetDepositLimit(address x, uint256 y) public {
+        vm.assume(x != address(this));
+        vm.prank(x);
+        vm.expectRevert(VaultErrors.OnlyRole.selector);
+        vault.setDepositLimit(y);
+        assertEq(vault.depositLimit(), 100_000_000 ether);
+
+        vault.setRole(address(this), VaultEvents.Roles.DEPOSIT_LIMIT_MANAGER);
+        vault.setDepositLimit(y);
+        assertEq(vault.depositLimit(), y);
+        vault.setDepositLimit(type(uint256).max);
+        vault.setDepositLimitModule(address(0x01));
+        vm.expectRevert(VaultErrors.UsingDepositModule.selector);
+        vault.setDepositLimit(y);
+    }
+
+    function testMinTotalIdle() public {}
+
+    function testSetWithdrawLimitModule() public {}
+
+    function testSetDepositLimitModule(address y) public {
+        vault.removeRole(address(this), VaultEvents.Roles.DEPOSIT_LIMIT_MANAGER);
+        vm.expectRevert(VaultErrors.OnlyRole.selector);
+        vault.setDepositLimitModule(y);
+        assertEq(vault.depositLimitModule(), address(0));
+
+        vault.setRole(address(this), VaultEvents.Roles.DEPOSIT_LIMIT_MANAGER);
+
+        vm.expectRevert(VaultErrors.UsingDepositLimit.selector);
+        vault.setDepositLimitModule(y);
+        assertEq(vault.depositLimitModule(), address(0));
+
+        vault.setDepositLimit(type(uint256).max);
+        vault.setDepositLimitModule(y);
+        assertEq(vault.depositLimitModule(), y);
+    }
+
+    function testSetAccountant(address y) public {
+        vm.assume(y != address(this));
+        vm.prank(y);
+        vm.expectRevert(VaultErrors.OnlyRole.selector);
+        vault.setAccountant(y);
+
+        vault.setRole(address(this), VaultEvents.Roles.ACCOUNTANT_MANAGER);
+        vault.setAccountant(y);
+        assertEq(y, vault.accountant());
+    }
+
+    function testUseDefault(address y) public {
+        vm.assume(y != address(this));
+        vm.prank(y);
+        vm.expectRevert(VaultErrors.OnlyRole.selector);
+        vault.setUseDefaultQueue(true);
+        assertEq(vault.useDefaultQueue(), false);
+
+        vault.setRole(address(this), VaultEvents.Roles.QUEUE_MANAGER);
+        vault.setUseDefaultQueue(true);
+        assertEq(vault.useDefaultQueue(), true);
+    }
+
+    function testSetDefaultQueue() public {}
+
+    function testSetProfitMaxUnlockTime(address y) public {}
+
     /**
      * Testing Assumptions:
      *         1. The caller grants the stated amount to the user
@@ -119,9 +183,28 @@ contract VaultTest is Test {
         assertEq(vault.roles(y, VaultEvents.Roles.ACCOUNTANT_MANAGER), false);
     }
 
-    function testOpenRole() public {}
+    function testOpenRole(address y) public {
+        vm.assume(y != vault.roleManager());
+        vm.prank(y);
+        vm.expectRevert(VaultErrors.OnlyManager.selector);
+        vault.setOpenRole(VaultEvents.Roles.DEPOSIT_LIMIT_MANAGER);
 
-    function testCloseRole() public {}
+        vault.setOpenRole(VaultEvents.Roles.DEPOSIT_LIMIT_MANAGER);
+        assertEq(vault.openRoles(VaultEvents.Roles.DEPOSIT_LIMIT_MANAGER), true);
+    }
+
+    function testCloseRole(address y) public {
+        vault.setOpenRole(VaultEvents.Roles.DEPOSIT_LIMIT_MANAGER);
+        assertEq(vault.openRoles(VaultEvents.Roles.DEPOSIT_LIMIT_MANAGER), true);
+        vm.assume(y != vault.roleManager());
+        vm.prank(y);
+        vm.expectRevert(VaultErrors.OnlyManager.selector);
+        vault.closeOpenRole(VaultEvents.Roles.DEPOSIT_LIMIT_MANAGER);
+        assertEq(vault.openRoles(VaultEvents.Roles.DEPOSIT_LIMIT_MANAGER), true);
+
+        vault.closeOpenRole(VaultEvents.Roles.DEPOSIT_LIMIT_MANAGER);
+        assertEq(vault.openRoles(VaultEvents.Roles.DEPOSIT_LIMIT_MANAGER), false);
+    }
 
     /**
      * Testing Assumptions:
@@ -288,11 +371,217 @@ contract VaultTest is Test {
         assertEq(mock.balanceOf(address(vault)), x);
     }
 
-    // function testIncreaseAllowance() public {}
+    function testIncreaseAllowance(uint256 x) public {
+        vm.assume(x > 0 && x < type(uint64).max);
+        assertEq(vault.allowance(address(this), alice), 0);
+        vault.increaseAllowance(alice, x);
+        assertEq(vault.allowance(address(this), alice), x);
+        bool success = vault.increaseAllowance(alice, x);
+        assertEq(success, true);
+        assertEq(vault.allowance(address(this), alice), x * 2);
+        vault.increaseAllowance(alice, x);
+        assertEq(vault.allowance(address(this), alice), x * 3);
+        vault.increaseAllowance(alice, x);
+        assertEq(vault.allowance(address(this), alice), x * 4);
+        vm.expectRevert();
+        bool result = vault.increaseAllowance(alice, type(uint256).max);
+        assertEq(result, false);
+    }
 
-    // function testDecreaseAllowance() public {}
+    function testDecreaseAllowance(uint256 x) public {
+        vm.assume(x > 0 && x < type(uint64).max);
+        vault.approve(alice, type(uint256).max);
+        assertEq(vault.allowance(address(this), alice), type(uint256).max);
+        vault.decreaseAllowance(alice, x);
+        assertEq(vault.allowance(address(this), alice), type(uint256).max - x);
+        vault.decreaseAllowance(alice, x);
+        assertEq(vault.allowance(address(this), alice), type(uint256).max - (x * 2));
+        vault.decreaseAllowance(alice, x);
+        assertEq(vault.allowance(address(this), alice), type(uint256).max - (x * 3));
+        bool success = vault.decreaseAllowance(alice, x);
+        assertEq(success, true);
+        assertEq(vault.allowance(address(this), alice), type(uint256).max - (x * 4));
+        vm.expectRevert();
+        bool result = vault.decreaseAllowance(alice, type(uint256).max);
+        assertEq(result, false);
+    }
 
     // function testRedeem() public {}
 
     // function testWithdraw() public {}
 }
+
+/// List of all functions to test and their associated visability / state
+
+// ====================================================== \\
+//                    EXTERNAL FUNCTIONS                  \\
+// ====================================================== \\
+
+// function addStrategy(address strategy) external;
+
+// function revokeStrategy(address strategy) external;
+
+// function forceRevokeStrategy(address strategy) external;
+
+// function updateMaxDebtForStrategy(address strategy, uint256 newMaxDebt) external;
+
+// function updateDebt(address strategy, uint256 targetDebt) external returns (uint256);
+
+// function shutdownVault() external;
+
+// function deposit(uint256 assets, address receiver) external returns (uint256);
+
+// function mint(uint256 shares, address receiver) external returns (uint256);
+
+// function processReport(address strategy) external returns (uint256, uint256);
+
+// function buyDebt(address strategy, uint256 amount) external;
+
+// function withdraw(uint256 assets, address receiver, address owner, uint256 maxLoss, address[10] calldata strats)
+//     external
+//     returns (uint256);
+
+// function redeem(uint256 shares, address receiver, address owner, uint256 maxLoss, address[10] calldata strats)
+//     external
+//     returns (uint256);
+
+// function approve(address spender, uint256 amount) external returns (bool); ✅
+
+// function transfer(address receiver, uint256 amount) external returns (bool); ✅
+
+// function transferFrom(address sender, address receiver, uint256 amount) external returns (bool); ✅
+
+// function increaseAllowance(address spender, uint256 amount) external returns (bool); ✅
+
+// function decreaseAllowance(address spender, uint256 amount) external returns (bool); ✅
+
+// ====================================================== \\
+//                     SETTER FUNCTIONS                   \\
+// ====================================================== \\
+
+// function setRole(address recipient, Roles role) external; ✅
+
+// function removeRole(address account, Roles role) external; ✅
+
+// function setOpenRole(Roles role) external; ✅
+
+// function closeOpenRole(Roles role) external; ✅
+
+// function transferRoleManger(address _roleManager) external; ✅
+
+// function acceptRoleManager() external; ✅
+
+// function setDepositLimit(uint256 _depositLimit) external; ✅
+
+// function setAccountant(address newAccountant) external;
+
+// function setDefaultQueue(address[] calldata newDefaultQueue) external;
+
+// function setUseDefaultQueue(bool _useDefaultQueue) external;
+
+// function setDepositLimitModule(address _depositLimitModule) external;
+
+// function setWithdrawLimitModule(address _withdrawLimitModule) external;
+
+// function setMinimumTotalIdle(uint256 _minimumTotalIdle) external;
+
+// function setProfitMaxUnlockTime(uint256 _profitMaxUnlockTime) external;
+
+// ====================================================== \\
+//                  EXTERNAL VIEW FUNCTIONS               \\
+// ====================================================== \\
+
+// function balanceOf(address owner) external view returns (uint256);
+
+// function previewWithdraw(uint256 assests) external view returns (uint256);
+
+// function previewRedeem(uint256 shares) external view returns (uint256);
+
+// function maxMint(address receiver) external view returns (uint256);
+
+// function maxDeposit(address receiver) external view returns (uint256);
+
+// function convertToAssets(uint256 shares) external view returns (uint256);
+
+// function previewMint(uint256 shares) external view returns (uint256);
+
+// function previewDeposits(uint256 assets) external view returns (uint256);
+
+// function convertToShares(uint256 assets) external view returns (uint256);
+
+// function totalAssets() external view returns (uint256);
+
+// function maxRedeem(address owner, uint256 maxLoss, address[10] calldata strats) external view returns (uint256);
+
+// function maxWithdraw(address owner, uint256 maxLoss, address[10] calldata strats) external view returns (uint256);
+
+// function assessShareOfUnrealizedLosses(address strategy, uint256 assetsNeeded) external view returns (uint256);
+
+// ====================================================== \\
+//                    INTERNAL FUNCTIONS                  \\
+// ====================================================== \\
+
+// function _enforceRoles(address account, Roles role) private view;
+
+// function _spendAllowance(address owner, address spender, uint256 amount) private;
+
+// function _transfer(address sender, address receiver, uint256 amount) private;
+
+// function _transferFrom(address sender, address receiver, uint256 amount) private returns (bool);
+
+// function _approve(address owner, address spender, uint256 amount) private returns (bool);
+
+// function _increaseAllowance(address owner, address spender, uint256 amount) private returns (bool);
+
+// function _decreaseAllowance(address owner, address spender, uint256 amount) private returns (bool);
+
+// function _burnShares(uint256 shares, address owner) private;
+
+// function _unlockedShares() private view returns (uint256);
+
+// function _totalSupply() private view returns (uint256);
+
+// function _burnUnlockedShares() private;
+
+// function _totalAssets() private view returns (uint256);
+
+// function _convertToAssets(uint256 shares, Rounding rounding) private view returns (uint256);
+
+// function _convertToShares(uint256 assets, Rounding rounding) private view returns (uint256);
+
+// function _issueShares(uint256 shares, address recipient) private;
+
+// function _issueSharesForAmount(uint256 amount, address recipient) internal returns (uint256);
+
+// function _maxDeposit(address receiver) private view returns (uint256);
+
+// function _maxWithdraw(address owner, uint256 maxLoss, address[MAX_QUEUE] calldata strats)
+//     private
+//     view
+//     returns (uint256);
+
+// function _deposit(address sender, address receipient, uint256 assets) private returns (uint256);
+
+// function _mint(address sender, address receipient, uint256 shares) private returns (uint256);
+
+// function _assessShareOfUnrealizedLosses(address strategy, uint256 assetsNeeded) private view returns (uint256);
+
+// function _withdrawFromStrategy(address strategy, uint256 assetsToWithdraw) private;
+
+// function _redeem(
+//     address sender,
+//     address receiver,
+//     address owner,
+//     uint256 assets,
+//     uint256 sharesToBurn,
+//     uint256 maxLoss,
+//     address[MAX_QUEUE] calldata strats
+// ) private returns (uint256);
+
+// function _addStrategy(address newStrategy) private;
+
+// function _revokeStrategy(address strategy, bool force) private;
+
+// function _updateDebt(address strategy, uint256 targetDebt) private returns (uint256);
+
+// function _processReport(address strategy) private returns (uint256, uint256);

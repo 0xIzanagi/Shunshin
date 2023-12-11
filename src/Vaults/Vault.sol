@@ -53,9 +53,9 @@ contract Vault is IVault, VaultErrors, VaultEvents {
     uint256 public totalDebt;
     uint256 public totalIdle;
     uint256 private minimumTotalIdle;
-    uint256 private depositLimit;
-    address private accountant;
-    address private depositLimitModule;
+    uint256 public depositLimit;
+    address public accountant;
+    address public depositLimitModule;
     address private withdrawLimitModule;
     address public roleManager;
     address private futureRoleManager;
