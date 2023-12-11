@@ -34,38 +34,38 @@ contract Vault is IVault, VaultErrors, VaultEvents {
     //                CONSTANTS AND IMMUTABLES                \\
     // ====================================================== \\
 
-    uint256 public constant MAX_QUEUE = 10;
-    uint256 public constant MAX_BPS = 10_000;
-    uint256 public constant MAX_BPS_EXTENDED = 1_000_000_000_000;
+    uint256 private constant MAX_QUEUE = 10;
+    uint256 private constant MAX_BPS = 10_000;
+    uint256 private constant MAX_BPS_EXTENDED = 1_000_000_000_000;
 
     ERC20 public immutable asset;
-    uint256 public immutable decimals;
+    uint8 public immutable decimals;
     address public immutable factory;
 
     // ====================================================== \\
     //                     STORAGE VARIABLES                  \\
     // ====================================================== \\
 
-    uint256 queueIndex;
+    uint256 private queueIndex;
     address[10] public defaultQueue;
     bool public useDefaultQueue;
     uint256 public totalSupply;
-    uint256 totalDebt;
-    uint256 totalIdle;
-    uint256 minimumTotalIdle;
-    uint256 depositLimit;
-    address accountant;
-    address depositLimitModule;
-    address withdrawLimitModule;
+    uint256 public totalDebt;
+    uint256 public totalIdle;
+    uint256 private minimumTotalIdle;
+    uint256 private depositLimit;
+    address private accountant;
+    address private depositLimitModule;
+    address private withdrawLimitModule;
     address public roleManager;
-    address futureRoleManager;
+    address private futureRoleManager;
     string public name;
     string public symbol;
-    bool shutdown;
-    uint256 profitMaxUnlockTime;
-    uint256 fullProfitUnlockDate;
-    uint256 profitUnlockingRate;
-    uint256 lastProfitUpdate;
+    bool private shutdown;
+    uint256 public profitMaxUnlockTime;
+    uint256 public fullProfitUnlockDate;
+    uint256 public profitUnlockingRate;
+    uint256 public lastProfitUpdate;
 
     // ====================================================== \\
     //                          MAPPINGS                      \\
@@ -176,13 +176,19 @@ contract Vault is IVault, VaultErrors, VaultEvents {
         emit DebtPurchased(strategy, amount);
     }
 
-    function withdraw(uint256 assets, address receiver, address owner, uint256 maxLoss, address[10] calldata strats) external returns(uint256) {
+    function withdraw(uint256 assets, address receiver, address owner, uint256 maxLoss, address[10] calldata strats)
+        external
+        returns (uint256)
+    {
         uint256 shares = _convertToShares(assets, Rounding.ROUND_UP);
         _redeem(msg.sender, receiver, owner, assets, shares, maxLoss, strats);
         return shares;
     }
 
-    function redeem(uint256 shares, address receiver, address owner, uint256 maxLoss, address[10] calldata strats) external returns(uint256) {
+    function redeem(uint256 shares, address receiver, address owner, uint256 maxLoss, address[10] calldata strats)
+        external
+        returns (uint256)
+    {
         uint256 assets = _convertToAssets(shares, Rounding.ROUND_DOWN);
         return _redeem(msg.sender, receiver, owner, assets, shares, maxLoss, strats);
     }
@@ -305,6 +311,21 @@ contract Vault is IVault, VaultErrors, VaultEvents {
         return balances[owner];
     }
 
+    function previewWithdraw(uint256 assests) external view returns (uint256) {}
+    function previewRedeem(uint256 shares) external view returns (uint256) {}
+    function maxMint(address receiver) external view returns (uint256) {}
+    function maxDeposit(address receiver) external view returns (uint256) {}
+    function convertToAssets(uint256 shares) external view returns (uint256) {}
+    function previewMint(uint256 shares) external view returns (uint256) {}
+    function previewDeposits(uint256 assets) external view returns (uint256) {}
+    function convertToShares(uint256 assets) external view returns (uint256) {}
+
+    function totalAssets() external view returns (uint256) {}
+    //function asset() external view returns(ERC20);
+    function maxRedeem(address owner, uint256 maxLoss, address[10] calldata strats) external view returns (uint256) {}
+    function maxWithdraw(address owner, uint256 maxLoss, address[10] calldata strats) external view returns (uint256) {}
+    function assessShareOfUnrealizedLosses(address strategy, uint256 assetsNeeded) external view returns (uint256) {}
+
     // ====================================================== \\
     //                    INTERNAL FUNCTIONS                  \\
     // ====================================================== \\
@@ -409,9 +430,9 @@ contract Vault is IVault, VaultErrors, VaultEvents {
             return assets;
         }
         uint256 ts = _totalSupply();
-        uint256 totalAssets = _totalAssets();
+        uint256 ta = _totalAssets();
 
-        if (totalAssets == 0) {
+        if (ta == 0) {
             if (ts == 0) {
                 return assets;
             } else {
@@ -419,8 +440,8 @@ contract Vault is IVault, VaultErrors, VaultEvents {
             }
         }
         uint256 numerator = assets * ts;
-        uint256 shares = numerator / totalAssets;
-        if (rounding == Rounding.ROUND_UP && numerator % totalAssets != 0) {
+        uint256 shares = numerator / ta;
+        if (rounding == Rounding.ROUND_UP && numerator % ta != 0) {
             shares += 1;
         }
         return shares;
@@ -435,14 +456,14 @@ contract Vault is IVault, VaultErrors, VaultEvents {
 
     function _issueSharesForAmount(uint256 amount, address recipient) internal returns (uint256) {
         uint256 ts = _totalSupply();
-        uint256 totalAssets = _totalAssets();
+        uint256 ta = _totalAssets();
         uint256 newShares;
         if (ts == 0) {
             newShares = amount;
-        } else if (totalAssets > amount) {
-            newShares = amount * ts / (totalAssets - amount);
+        } else if (ta > amount) {
+            newShares = amount * ts / (ta - amount);
         } else {
-            assert(totalAssets > amount);
+            assert(ta > amount);
         }
         if (newShares == 0) {
             return 0;
@@ -459,12 +480,12 @@ contract Vault is IVault, VaultErrors, VaultEvents {
         if (_depositLimitModule != address(0)) {
             return IDepositLimitModule(_depositLimitModule).availableDepositLimit(receiver);
         }
-        uint256 totalAssets = _totalAssets();
+        uint256 ta = _totalAssets();
         uint256 _depositLimit = depositLimit;
-        if (totalAssets >= _depositLimit) {
+        if (ta >= _depositLimit) {
             return 0;
         }
-        return (_depositLimit - totalAssets);
+        return (_depositLimit - ta);
     }
 
     function _maxWithdraw(address owner, uint256 maxLoss, address[MAX_QUEUE] calldata strats)
@@ -607,25 +628,25 @@ contract Vault is IVault, VaultErrors, VaultEvents {
                 if (strategies[_strategies[i]].activation == 0) revert InactiveStrategy();
                 uint256 currentDebt = strategies[_strategies[i]].currentDebt;
                 assetsToWithdraw = Math.min(assetsNeeded, currentDebt);
-                uint256 maxWithdraw =
+                uint256 maxTake =
                     IStrategy(_strategies[i]).convertToAssets(IStrategy(_strategies[i]).maxRedeem(address(this)));
                 uint256 unrealizedLossesShare = _assessShareOfUnrealizedLosses(_strategies[i], assetsToWithdraw);
                 if (unrealizedLossesShare > 0) {
-                    if (maxWithdraw < assetsToWithdraw - unrealizedLossesShare) {
+                    if (maxTake < assetsToWithdraw - unrealizedLossesShare) {
                         uint256 wanted = assetsToWithdraw - unrealizedLossesShare;
-                        unrealizedLossesShare = unrealizedLossesShare * maxWithdraw / wanted;
+                        unrealizedLossesShare = unrealizedLossesShare * maxTake / wanted;
                     }
                     assetsToWithdraw -= unrealizedLossesShare;
                     requestedAssets -= unrealizedLossesShare;
                     assetsNeeded -= unrealizedLossesShare;
                     currentTotalDebt -= unrealizedLossesShare;
-                    if (maxWithdraw == 0 && unrealizedLossesShare > 0) {
+                    if (maxTake == 0 && unrealizedLossesShare > 0) {
                         uint256 _newDebt = currentDebt - unrealizedLossesShare;
                         strategies[_strategies[i]].currentDebt = _newDebt;
                         emit DebtUpdated(_strategies[i], currentDebt, _newDebt);
                     }
                 }
-                assetsToWithdraw = Math.min(assetsToWithdraw, maxWithdraw);
+                assetsToWithdraw = Math.min(assetsToWithdraw, maxTake);
                 if (assetsToWithdraw == 0) {
                     continue;
                 }
@@ -740,11 +761,11 @@ contract Vault is IVault, VaultErrors, VaultEvents {
             newDebt = currentDebt - assetsToWithdraw;
         } else {
             if (newDebt > strategies[strategy].maxDebt) revert OverMaxDebt();
-            uint256 maxDeposit = IStrategy(strategy).maxDeposit(address(this));
-            if (maxDeposit == 0) revert ZeroDeposit();
+            uint256 _maxDepo = IStrategy(strategy).maxDeposit(address(this));
+            if (_maxDepo == 0) revert ZeroDeposit();
             uint256 assetsToDeposit = newDebt - currentDebt;
-            if (assetsToDeposit > maxDeposit) {
-                assetsToDeposit = maxDeposit;
+            if (assetsToDeposit > _maxDepo) {
+                assetsToDeposit = _maxDepo;
             }
             uint256 _minimumTotalIdle = minimumTotalIdle;
             uint256 _totalIdle = totalIdle;
@@ -770,93 +791,100 @@ contract Vault is IVault, VaultErrors, VaultEvents {
         return newDebt;
     }
 
-    //Todo: cache to prevent stack too deep
-    function _processReport(address strategy) private returns (uint256, uint256) {
-        if (strategies[strategy].activation == 0) revert InactiveStrategy();
-        _burnUnlockedShares();
-        uint256 strategyShares = IStrategy(strategy).balanceOf(address(this));
-        uint256 totalAssets = IStrategy(strategy).convertToAssets(strategyShares);
-        uint256 currentDebt = strategies[strategy].currentDebt;
-
+    ///@dev to help with stack too deep on process report.
+    struct ReportParams {
         uint256 gain;
         uint256 loss;
-
-        if (totalAssets > currentDebt) {
-            gain = totalAssets - currentDebt;
-        } else {
-            loss = currentDebt - totalAssets;
-        }
-
+        uint256 ta;
+        ///@dev total assets
+        uint256 strategyShares;
         uint256 totalFees;
         uint256 totalRefunds;
         uint256 protocolFees;
         address protocolFeeReceipient;
+        uint256 sharesToBurn;
+        uint256 accountantFeeShares;
+        uint256 protocolFeeShares;
+    }
+
+    function _processReport(address strategy) private returns (uint256, uint256) {
+        if (strategies[strategy].activation == 0) revert InactiveStrategy();
+        _burnUnlockedShares();
+        ReportParams memory report;
+        report.strategyShares = IStrategy(strategy).balanceOf(address(this));
+        report.ta = IStrategy(strategy).convertToAssets(report.strategyShares);
+        uint256 currentDebt = strategies[strategy].currentDebt;
+
+        if (report.ta > currentDebt) {
+            report.gain = report.ta - currentDebt;
+        } else {
+            report.loss = currentDebt - report.ta;
+        }
+
         address _accountant = accountant;
 
         if (_accountant != address(0)) {
-            (totalFees, totalRefunds) = IAccountant(_accountant).report(strategy, gain, loss);
-            if (totalFees > 0) {
+            (report.totalFees, report.totalRefunds) =
+                IAccountant(_accountant).report(strategy, report.gain, report.loss);
+            if (report.totalFees > 0) {
                 uint16 protocolFeeBps;
-                (protocolFeeBps, protocolFeeReceipient) = IFactory(factory).protocolFeeConfig();
+                (protocolFeeBps, report.protocolFeeReceipient) = IFactory(factory).protocolFeeConfig();
                 if (protocolFeeBps > 0) {
-                    protocolFees = totalFees * uint256(protocolFeeBps) / MAX_BPS;
+                    report.protocolFees = report.totalFees * uint256(protocolFeeBps) / MAX_BPS;
                 }
             }
         }
 
-        uint256 sharesToBurn;
-        uint256 accountantFeeShares;
-        uint256 protocolFeeShares;
+        if (report.loss + report.totalFees > 0) {
+            report.sharesToBurn += _convertToShares(report.loss + report.totalFees, Rounding.ROUND_UP);
 
-        if (loss + totalFees > 0) {
-            sharesToBurn += _convertToShares(loss + totalFees, Rounding.ROUND_UP);
-
-            if (totalFees > 0) {
-                accountantFeeShares = _convertToShares(totalFees - protocolFees, Rounding.ROUND_DOWN);
-                if (protocolFees > 0) {
-                    protocolFeeShares = _convertToShares(protocolFees, Rounding.ROUND_DOWN);
+            if (report.totalFees > 0) {
+                report.accountantFeeShares =
+                    _convertToShares(report.totalFees - report.protocolFees, Rounding.ROUND_DOWN);
+                if (report.protocolFees > 0) {
+                    report.protocolFeeShares = _convertToShares(report.protocolFees, Rounding.ROUND_DOWN);
                 }
             }
         }
         uint256 newlyLockedShares;
-        if (totalRefunds > 0) {
-            totalRefunds = Math.min(
-                totalRefunds, Math.min(asset.balanceOf(accountant), asset.allowance(accountant, address(this)))
+        if (report.totalRefunds > 0) {
+            report.totalRefunds = Math.min(
+                report.totalRefunds, Math.min(asset.balanceOf(accountant), asset.allowance(accountant, address(this)))
             );
-            asset.transferFrom(accountant, address(this), totalRefunds);
-            totalIdle += totalRefunds;
+            asset.transferFrom(accountant, address(this), report.totalRefunds);
+            totalIdle += report.totalRefunds;
         }
 
-        if (gain > 0) {
-            strategies[strategy].currentDebt += gain;
-            totalDebt += gain;
+        if (report.gain > 0) {
+            strategies[strategy].currentDebt += report.gain;
+            totalDebt += report.gain;
         }
 
         uint256 _profitMaxUnlockTime = profitMaxUnlockTime;
 
-        if (gain + totalRefunds > 0 && _profitMaxUnlockTime != 0) {
-            newlyLockedShares = _issueSharesForAmount(gain + totalRefunds, address(this));
+        if (report.gain + report.totalRefunds > 0 && _profitMaxUnlockTime != 0) {
+            newlyLockedShares = _issueSharesForAmount(report.gain + report.totalRefunds, address(this));
         }
 
-        if (loss > 0) {
-            strategies[strategy].currentDebt -= loss;
-            totalDebt -= loss;
+        if (report.loss > 0) {
+            strategies[strategy].currentDebt -= report.loss;
+            totalDebt -= report.loss;
         }
 
         uint256 previouslyLockedShares = balances[address(this)] - newlyLockedShares;
-        if (sharesToBurn > 0) {
-            sharesToBurn = Math.min(sharesToBurn, previouslyLockedShares + newlyLockedShares);
-            _burnShares(sharesToBurn, address(this));
-            uint256 sharesNotToLock = Math.min(sharesToBurn, newlyLockedShares);
+        if (report.sharesToBurn > 0) {
+            report.sharesToBurn = Math.min(report.sharesToBurn, previouslyLockedShares + newlyLockedShares);
+            _burnShares(report.sharesToBurn, address(this));
+            uint256 sharesNotToLock = Math.min(report.sharesToBurn, newlyLockedShares);
             newlyLockedShares -= sharesNotToLock;
-            previouslyLockedShares -= sharesToBurn - sharesNotToLock;
+            previouslyLockedShares -= report.sharesToBurn - sharesNotToLock;
         }
 
-        if (accountantFeeShares > 0) {
-            _issueShares(accountantFeeShares, _accountant);
+        if (report.accountantFeeShares > 0) {
+            _issueShares(report.accountantFeeShares, _accountant);
         }
-        if (protocolFeeShares > 0) {
-            _issueShares(protocolFeeShares, protocolFeeReceipient);
+        if (report.protocolFeeShares > 0) {
+            _issueShares(report.protocolFeeShares, report.protocolFeeReceipient);
         }
         uint256 totalLockedShares = previouslyLockedShares + newlyLockedShares;
         if (totalLockedShares > 0) {
@@ -876,13 +904,13 @@ contract Vault is IVault, VaultErrors, VaultEvents {
         strategies[strategy].lastReport = block.timestamp;
         emit StrategyReported(
             strategy,
-            gain,
-            loss,
+            report.gain,
+            report.loss,
             strategies[strategy].currentDebt,
-            _convertToAssets(protocolFees, Rounding.ROUND_DOWN),
-            _convertToAssets(totalFees, Rounding.ROUND_DOWN),
-            totalRefunds
+            _convertToAssets(report.protocolFees, Rounding.ROUND_DOWN),
+            _convertToAssets(report.totalFees, Rounding.ROUND_DOWN),
+            report.totalRefunds
         );
-        return (gain, loss);
+        return (report.gain, report.loss);
     }
 }
