@@ -20,6 +20,7 @@ abstract contract VaultErrors {
     error OnlyManager();
     error OnlyRole();
     error OverMaxDebt();
+    error ProfitUnlockTime();
     error StrategyUnrealizedLosses();
     error VaultShutdown();
     error UsingDepositModule();

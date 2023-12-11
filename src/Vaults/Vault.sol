@@ -52,11 +52,11 @@ contract Vault is IVault, VaultErrors, VaultEvents {
     uint256 public totalSupply;
     uint256 public totalDebt;
     uint256 public totalIdle;
-    uint256 private minimumTotalIdle;
+    uint256 public minimumTotalIdle;
     uint256 public depositLimit;
     address public accountant;
     address public depositLimitModule;
-    address private withdrawLimitModule;
+    address public withdrawLimitModule;
     address public roleManager;
     address private futureRoleManager;
     string public name;
@@ -297,11 +297,29 @@ contract Vault is IVault, VaultErrors, VaultEvents {
         emit UpdateDepositLimitModule(_depositLimitModule);
     }
 
-    function setWithdrawLimitModule(address _withdrawLimitModule) external {}
+    function setWithdrawLimitModule(address _withdrawLimitModule) external {
+        _enforceRoles(msg.sender, Roles.WITHDRAW_LIMIT_MANAGER);
+        withdrawLimitModule = _withdrawLimitModule;
+        emit UpdateWithdrawLimitModule(_withdrawLimitModule);
+    }
 
-    function setMinimumTotalIdle(uint256 _minimumTotalIdle) external {}
+    function setMinimumTotalIdle(uint256 _minimumTotalIdle) external {
+        _enforceRoles(msg.sender, Roles.MINIMUM_IDLE_MANAGER);
+        minimumTotalIdle = _minimumTotalIdle;
+        emit UpdateMinimumTotalIdle(_minimumTotalIdle);
+    }
 
-    function setProfitMaxUnlockTime(uint256 _profitMaxUnlockTime) external {}
+    function setProfitMaxUnlockTime(uint256 _profitMaxUnlockTime) external {
+        _enforceRoles(msg.sender, Roles.PROFIT_UNLOCK_MANAGER);
+        if (_profitMaxUnlockTime > 31_556_952) revert ProfitUnlockTime();
+        if (_profitMaxUnlockTime == 0) {
+            _burnShares(balances[address(this)], address(this));
+            profitUnlockingRate = 0;
+            fullProfitUnlockDate = 0;
+        }
+        profitMaxUnlockTime = _profitMaxUnlockTime;
+        emit UpdateProfitMaxUnlockTime(_profitMaxUnlockTime);
+    }
 
     // ====================================================== \\
     //                  EXTERNAL VIEW FUNCTIONS               \\

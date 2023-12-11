@@ -63,9 +63,28 @@ contract VaultTest is Test {
         vault.setDepositLimit(y);
     }
 
-    function testMinTotalIdle() public {}
+    function testMinTotalIdle(uint256 x, address y) public {
+        vm.prank(y);
+        vm.expectRevert(VaultErrors.OnlyRole.selector);
+        vault.setMinimumTotalIdle(x);
 
-    function testSetWithdrawLimitModule() public {}
+        assertEq(vault.minimumTotalIdle(), 0);
+        vault.setRole(address(this), VaultEvents.Roles.MINIMUM_IDLE_MANAGER);
+        vault.setMinimumTotalIdle(x);
+        assertEq(vault.minimumTotalIdle(), x);
+    }
+
+    function testSetWithdrawLimitModule(address y, address x) public {
+        vm.prank(x);
+        vm.expectRevert(VaultErrors.OnlyRole.selector);
+        vault.setWithdrawLimitModule(y);
+
+        assertEq(vault.withdrawLimitModule(), address(0));
+
+        vault.setRole(address(this), VaultEvents.Roles.WITHDRAW_LIMIT_MANAGER);
+        vault.setWithdrawLimitModule(y);
+        assertEq(vault.withdrawLimitModule(), y);
+    }
 
     function testSetDepositLimitModule(address y) public {
         vault.removeRole(address(this), VaultEvents.Roles.DEPOSIT_LIMIT_MANAGER);
@@ -473,13 +492,13 @@ contract VaultTest is Test {
 
 // function setDepositLimit(uint256 _depositLimit) external; ✅
 
-// function setAccountant(address newAccountant) external;
+// function setAccountant(address newAccountant) external; ✅
 
 // function setDefaultQueue(address[] calldata newDefaultQueue) external;
 
-// function setUseDefaultQueue(bool _useDefaultQueue) external;
+// function setUseDefaultQueue(bool _useDefaultQueue) external; ✅
 
-// function setDepositLimitModule(address _depositLimitModule) external;
+// function setDepositLimitModule(address _depositLimitModule) external; ✅
 
 // function setWithdrawLimitModule(address _withdrawLimitModule) external;
 
