@@ -128,7 +128,41 @@ contract VaultTest is Test {
 
     function testSetDefaultQueue() public {}
 
-    function testSetProfitMaxUnlockTime(address y) public {}
+    //Note: Need to give the vaults profit shares to make sure if the profit unlock time is equal to 0 that it burns them and unlocks all the profit
+    function testSetProfitMaxUnlockTime(address y, uint256 x) public {
+        vm.prank(y);
+        vm.expectRevert(VaultErrors.OnlyRole.selector);
+        vault.setProfitMaxUnlockTime(x);
+
+        vault.setRole(y, VaultEvents.Roles.PROFIT_UNLOCK_MANAGER);
+        vm.startPrank(y);
+        if (x > 31_556_952) {
+            vm.expectRevert(VaultErrors.ProfitUnlockTime.selector);
+            vault.setProfitMaxUnlockTime(x);
+        } else if (x > 0) {
+            vault.setProfitMaxUnlockTime(x);
+            assertEq(vault.profitMaxUnlockTime(), x);
+        } else if (x == 0) {
+            vault.setProfitMaxUnlockTime(x);
+            assertEq(vault.profitMaxUnlockTime(), 0);
+            assertEq(vault.profitUnlockingRate(), 0);
+            assertEq(vault.fullProfitUnlockDate(), 0);
+        }
+        vm.stopPrank();
+    }
+
+    function testSetMinTotalIdle(uint256 x, address y) public {
+        vm.prank(y);
+        vm.expectRevert(VaultErrors.OnlyRole.selector);
+        vault.setMinimumTotalIdle(x);
+
+        assertEq(vault.minimumTotalIdle(), 0);
+
+        vault.setRole(y, VaultEvents.Roles.MINIMUM_IDLE_MANAGER);
+        vm.prank(y);
+        vault.setMinimumTotalIdle(x);
+        assertEq(vault.minimumTotalIdle(), x);
+    }
 
     /**
      * Testing Assumptions:
@@ -425,6 +459,23 @@ contract VaultTest is Test {
         assertEq(result, false);
     }
 
+    function testShutdown() public {
+        vm.prank(alice);
+        vm.expectRevert(VaultErrors.OnlyRole.selector);
+        vault.shutdownVault();
+
+        assertEq(vault.shutdown(), false);
+
+        vault.setRole(address(this), VaultEvents.Roles.EMERGENCY_MANAGER);
+        vault.shutdownVault();
+        assertEq(vault.depositLimit(), 0);
+        assertEq(vault.depositLimitModule(), address(0));
+        assertEq(vault.shutdown(), true);
+
+        vm.expectRevert(VaultErrors.VaultShutdown.selector);
+        vault.mint(100, address(this));
+    }
+
     // function testRedeem() public {}
 
     // function testWithdraw() public {}
@@ -436,6 +487,16 @@ contract VaultTest is Test {
 //                    EXTERNAL FUNCTIONS                  \\
 // ====================================================== \\
 
+// function approve(address spender, uint256 amount) external returns (bool); ✅
+
+// function transfer(address receiver, uint256 amount) external returns (bool); ✅
+
+// function transferFrom(address sender, address receiver, uint256 amount) external returns (bool); ✅
+
+// function increaseAllowance(address spender, uint256 amount) external returns (bool); ✅
+
+// function decreaseAllowance(address spender, uint256 amount) external returns (bool); ✅
+
 // function addStrategy(address strategy) external;
 
 // function revokeStrategy(address strategy) external;
@@ -446,7 +507,7 @@ contract VaultTest is Test {
 
 // function updateDebt(address strategy, uint256 targetDebt) external returns (uint256);
 
-// function shutdownVault() external;
+// function shutdownVault() external; ✅
 
 // function deposit(uint256 assets, address receiver) external returns (uint256);
 
@@ -463,16 +524,6 @@ contract VaultTest is Test {
 // function redeem(uint256 shares, address receiver, address owner, uint256 maxLoss, address[10] calldata strats)
 //     external
 //     returns (uint256);
-
-// function approve(address spender, uint256 amount) external returns (bool); ✅
-
-// function transfer(address receiver, uint256 amount) external returns (bool); ✅
-
-// function transferFrom(address sender, address receiver, uint256 amount) external returns (bool); ✅
-
-// function increaseAllowance(address spender, uint256 amount) external returns (bool); ✅
-
-// function decreaseAllowance(address spender, uint256 amount) external returns (bool); ✅
 
 // ====================================================== \\
 //                     SETTER FUNCTIONS                   \\
@@ -500,11 +551,11 @@ contract VaultTest is Test {
 
 // function setDepositLimitModule(address _depositLimitModule) external; ✅
 
-// function setWithdrawLimitModule(address _withdrawLimitModule) external;
+// function setWithdrawLimitModule(address _withdrawLimitModule) external; ✅
 
-// function setMinimumTotalIdle(uint256 _minimumTotalIdle) external;
+// function setMinimumTotalIdle(uint256 _minimumTotalIdle) external; ✅
 
-// function setProfitMaxUnlockTime(uint256 _profitMaxUnlockTime) external;
+// function setProfitMaxUnlockTime(uint256 _profitMaxUnlockTime) external; ✅
 
 // ====================================================== \\
 //                  EXTERNAL VIEW FUNCTIONS               \\

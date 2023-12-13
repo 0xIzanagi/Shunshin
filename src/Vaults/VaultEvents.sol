@@ -63,4 +63,5 @@ abstract contract VaultEvents {
     event UpdateMinimumTotalIdle(uint256 minimumTotalIdle);
     event UpdateProfitMaxUnlockTime(uint256 profitMaxUnlockTime);
     event DebtPurchased(address indexed strategy, uint256 amount);
+    event VaultClosed(uint256 timestamp);
 }

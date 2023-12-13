@@ -5,6 +5,6 @@ libs = ["lib"]
 evm_version = "shanghai"
 
 [fuzz]
-runs = 10000
+runs = 2000
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

@@ -61,7 +61,7 @@ contract Vault is IVault, VaultErrors, VaultEvents {
     address private futureRoleManager;
     string public name;
     string public symbol;
-    bool private shutdown;
+    bool public shutdown;
     uint256 public profitMaxUnlockTime;
     uint256 public fullProfitUnlockDate;
     uint256 public profitUnlockingRate;
@@ -141,7 +141,7 @@ contract Vault is IVault, VaultErrors, VaultEvents {
             emit UpdateDepositLimitModule(address(0));
         }
         roles[msg.sender][Roles.DEBT_MANAGER] = true;
-        //emit Shutdown();
+        emit VaultClosed(block.timestamp);
     }
 
     function deposit(uint256 assets, address receiver) external returns (uint256) {
@@ -337,7 +337,6 @@ contract Vault is IVault, VaultErrors, VaultEvents {
     function previewMint(uint256 shares) external view returns (uint256) {}
     function previewDeposits(uint256 assets) external view returns (uint256) {}
     function convertToShares(uint256 assets) external view returns (uint256) {}
-
     function totalAssets() external view returns (uint256) {}
     //function asset() external view returns(ERC20);
     function maxRedeem(address owner, uint256 maxLoss, address[10] calldata strats) external view returns (uint256) {}
