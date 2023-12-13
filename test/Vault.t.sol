@@ -269,7 +269,34 @@ contract VaultTest is Test {
      *         Case 6: The strategy is valid and the caller has the role and the default queue is not full
      *         Caes 7: The strategy is valid and the caller has the role and the default queue is full
      */
-    function testAddStrategy() public {}
+    function testAddStrategy(address y) public {
+        MockStrategy _mock = new MockStrategy(address(mock));
+        vm.prank(y);
+        vm.expectRevert(VaultErrors.OnlyRole.selector);
+        vault.addStrategy(address(_mock));
+
+        vault.setRole(y, VaultEvents.Roles.ADD_STRATEGY_MANAGER);
+        vm.startPrank(y);
+        vm.expectRevert(VaultErrors.InvalidStrategy.selector);
+        vault.addStrategy(address(0));
+        vm.expectRevert(VaultErrors.InvalidStrategy.selector);
+        vault.addStrategy(address(vault));
+
+        vm.warp(100);
+        vault.addStrategy(address(_mock));
+        (uint256 activation, uint256 last, uint256 current, uint256 total) = vault.strategies(address(_mock));
+        assertEq(activation, block.timestamp);
+        assertEq(last, block.timestamp);
+        assertEq(current, 0);
+        assertEq(total, 0);
+
+        vm.expectRevert(VaultErrors.ActiveStrategy.selector);
+        vault.addStrategy(address(_mock));
+        assertEq(vault.queueIndex(), 1);
+        assertEq(vault.defaultQueue(0), address(_mock));
+        vm.stopPrank();
+
+    }
 
     /**
      * Testing Assumptions:
@@ -407,9 +434,24 @@ contract VaultTest is Test {
     function testDeposit(uint256 x) public {
         vm.assume(x > 0 && x < 10_000_000 ether);
         mock.approve(address(vault), type(uint256).max);
+        vault.setDepositLimit(0);
+
+        vm.expectRevert(VaultErrors.DepositLimit.selector);
+        vault.deposit(x, address(this));
+
+        vault.setDepositLimit(100_000_000 ether);
         uint256 amountOut = vault.deposit(x, address(this));
         assertEq(vault.balanceOf(address(this)), amountOut);
         assertEq(mock.balanceOf(address(vault)), x);
+        assertEq(vault.totalIdle(), x);
+
+        vm.expectRevert(VaultErrors.ZeroShares.selector);
+        vault.deposit(0, address(this));
+
+        vault.setRole(address(this), VaultEvents.Roles.EMERGENCY_MANAGER);
+        vault.shutdownVault();
+        vm.expectRevert(VaultErrors.VaultShutdown.selector);
+        vault.deposit(x, address(this));
     }
 
     /**
@@ -419,9 +461,24 @@ contract VaultTest is Test {
     function testMint(uint256 x) public {
         vm.assume(x > 0 && x < 10_000_000 ether);
         mock.approve(address(vault), type(uint256).max);
+
+        vault.setDepositLimit(0);
+        vm.expectRevert(VaultErrors.DepositLimit.selector);
+        vault.mint(x, address(this));
+
+        vault.setDepositLimit(100_000_000 ether); 
         uint256 amountOut = vault.mint(x, address(this));
         assertEq(vault.balanceOf(address(this)), amountOut);
         assertEq(mock.balanceOf(address(vault)), x);
+        assertEq(vault.totalIdle(), x);
+
+        vm.expectRevert(VaultErrors.ZeroAssets.selector);
+        vault.mint(0, address(this));
+
+        vault.setRole(address(this), VaultEvents.Roles.EMERGENCY_MANAGER);
+        vault.shutdownVault();
+        vm.expectRevert(VaultErrors.VaultShutdown.selector);
+        vault.mint(x, address(this));
     }
 
     function testIncreaseAllowance(uint256 x) public {
@@ -497,7 +554,7 @@ contract VaultTest is Test {
 
 // function decreaseAllowance(address spender, uint256 amount) external returns (bool); ✅
 
-// function addStrategy(address strategy) external;
+// function addStrategy(address strategy) external; ✅
 
 // function revokeStrategy(address strategy) external;
 

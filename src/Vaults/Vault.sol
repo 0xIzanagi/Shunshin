@@ -23,6 +23,7 @@ import {VaultEvents} from "./VaultEvents.sol";
 /// 2. Add storage visability function calls to interface
 
 contract Vault is IVault, VaultErrors, VaultEvents {
+    //Note Gas optimizations here (pack struct);
     struct StrategyParams {
         uint256 activation;
         uint256 lastReport;
@@ -46,7 +47,7 @@ contract Vault is IVault, VaultErrors, VaultEvents {
     //                     STORAGE VARIABLES                  \\
     // ====================================================== \\
 
-    uint256 private queueIndex;
+    uint256 public queueIndex;
     address[10] public defaultQueue;
     bool public useDefaultQueue;
     uint256 public totalSupply;
