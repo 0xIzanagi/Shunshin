@@ -813,8 +813,8 @@ contract Vault is IVault, VaultErrors, VaultEvents {
     struct ReportParams {
         uint256 gain;
         uint256 loss;
-        uint256 ta;
         ///@dev total assets
+        uint256 ta;
         uint256 strategyShares;
         uint256 totalFees;
         uint256 totalRefunds;
