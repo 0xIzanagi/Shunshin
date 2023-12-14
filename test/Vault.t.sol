@@ -614,9 +614,11 @@ contract VaultTest is Test {
         vault.setMinimumTotalIdle(992_500 ether);
         uint256 preSecond = mock.balanceOf(address(vault));
         vault.updateDebt(address(_strat), 15_000 ether);
+
         uint256 deltaSecond = preSecond - mock.balanceOf(address(vault));
         assertEq(vault.totalIdle(), 992_500 ether);
         assertEq(vault.totalDebt(), 7_500 ether);
+
         (, , uint256 current, ) = vault.strategies(address(_strat));
         assertEq(current, 7_500 ether);
 
@@ -631,6 +633,10 @@ contract VaultTest is Test {
         /// or it is not. If it is not make the withdrawable assets eq. to the delta needed to
         /// get to minimum total idle. But if the delta is greater than total debt (deposits in the strategy)
         /// reset this to the deposited amount in the strategy.
+        vault.setMinimumTotalIdle(995_000 ether);
+        vault.updateDebt(address(_strat), 6_000 ether);
+        assertEq(vault.totalDebt(), 5_000 ether);
+        assertEq(vault.totalIdle(), 995_000 ether);
 
         /// 2b: Check what the maximum withdrawable amount from the strategy is. If it is 0 revert.
         /// if it is less than the currently calculated assets to withdraw make ATW = to max withdrawable.
@@ -643,6 +649,16 @@ contract VaultTest is Test {
         /// 2e: Check to make sure that withdraw is not greater than ATW if they are set ATW eq to withdrawn.
 
         /// 2f: Update store and set new debt eq to (current - assets to withdraw).
+
+        /// Test Case 3: The vault is shut down and should automatically withdraw all funds if possible.
+
+        // vault.setRole(address(this), VaultEvents.Roles.EMERGENCY_MANAGER);
+        // vault.shutdownVault();
+        // vault.updateDebt(address(_strat), 100_000 ether);
+        // (,, uint256 shutdownCurrent, ) = vault.strategies(address(_strat));
+        // assertEq(vault.totalDebt(), 0);
+        // assertEq(vault.totalIdle(), 1_000_000 ether);
+        // assertEq(shutdownCurrent, 0);
 
         /// If shutdown new debt should be 0, ie withdraw all funds from the strategy
         /// update strategy debt and return the new calculated debt
