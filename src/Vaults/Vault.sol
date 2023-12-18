@@ -21,7 +21,6 @@ import {VaultEvents} from "./VaultEvents.sol";
 ///Todo
 /// 1. Visability of storage variables
 /// 2. Add storage visability function calls to interface
-/// 3. Shadow Variable naming
 
 contract Vault is IVault, VaultErrors, VaultEvents {
     //Note Gas optimizations here (pack struct);
@@ -462,7 +461,7 @@ contract Vault is IVault, VaultErrors, VaultEvents {
         uint256 _fullProfitUnlockDate = fullProfitUnlockDate;
         uint256 unlocked;
         if (_fullProfitUnlockDate > block.timestamp) {
-            unlocked = profitUnlockingRate * (block.timestamp - lastProfitUpdate) / MAX_BPS_EXTENDED;
+            unlocked = Math.mulDiv(profitUnlockingRate, block.timestamp - lastProfitUpdate, MAX_BPS_EXTENDED);
         } else if (_fullProfitUnlockDate != 0) {
             unlocked = balances[address(this)];
         }
@@ -540,7 +539,7 @@ contract Vault is IVault, VaultErrors, VaultEvents {
         if (ts == 0) {
             newShares = amount;
         } else if (ta > amount) {
-            newShares = amount * ts / (ta - amount);
+            newShares = Math.mulDiv(amount, ts, (ta - amount));
         } else {
             assert(ta > amount);
         }
@@ -594,14 +593,14 @@ contract Vault is IVault, VaultErrors, VaultEvents {
                 uint256 strategyLimit =
                     IStrategy(_strategies[i]).convertToAssets(IStrategy(_strategies[i]).maxRedeem(address(this)));
                 if (strategyLimit < toWithdraw - unrealisedLosses) {
-                    unrealisedLosses = unrealisedLosses * strategyLimit / toWithdraw;
+                    unrealisedLosses = Math.mulDiv(unrealisedLosses, strategyLimit, toWithdraw);
                     toWithdraw = strategyLimit + unrealisedLosses;
                 }
                 if (toWithdraw == 0) {
                     continue;
                 }
                 if (unrealisedLosses > 0 && maxLoss < MAX_BPS) {
-                    if (loss + unrealisedLosses > (have + toWithdraw) * maxLoss / MAX_BPS) {
+                    if (loss + unrealisedLosses > Math.mulDiv((have + toWithdraw), maxLoss, MAX_BPS)) {
                         break;
                     }
                 }
@@ -713,7 +712,7 @@ contract Vault is IVault, VaultErrors, VaultEvents {
                 if (unrealizedLossesShare > 0) {
                     if (maxTake < assetsToWithdraw - unrealizedLossesShare) {
                         uint256 wanted = assetsToWithdraw - unrealizedLossesShare;
-                        unrealizedLossesShare = unrealizedLossesShare * maxTake / wanted;
+                        unrealizedLossesShare = Math.mulDiv(unrealizedLossesShare, maxTake, wanted);
                         assetsToWithdraw = maxTake + unrealizedLossesShare;
                     }
                     assetsToWithdraw -= unrealizedLossesShare;
@@ -759,7 +758,7 @@ contract Vault is IVault, VaultErrors, VaultEvents {
             totalDebt = currentTotalDebt;
         }
         if (assets > requestedAssets && maxLoss < MAX_BPS) {
-            if (assets - requestedAssets > assets * maxLoss / MAX_BPS) revert MaxLoss();
+            if (assets - requestedAssets > Math.mulDiv(assets, maxLoss, MAX_BPS)) revert MaxLoss();
         }
         _burnShares(shares, owner);
         totalIdle = currentTotalIdle - requestedAssets;
@@ -912,7 +911,7 @@ contract Vault is IVault, VaultErrors, VaultEvents {
                 uint16 protocolFeeBps;
                 (protocolFeeBps, report.protocolFeeReceipient) = IFactory(factory).protocolFeeConfig();
                 if (protocolFeeBps > 0) {
-                    report.protocolFees = report.totalFees * uint256(protocolFeeBps) / MAX_BPS;
+                    report.protocolFees = Math.mulDiv(report.totalFees, uint256(protocolFeeBps), MAX_BPS);
                 }
             }
         }
@@ -977,7 +976,7 @@ contract Vault is IVault, VaultErrors, VaultEvents {
             }
             uint256 newProfitLockingPeriod =
                 (previouslyLockedTime + newlyLockedShares * _profitMaxUnlockTime) / totalLockedShares;
-            profitUnlockingRate = totalLockedShares * MAX_BPS_EXTENDED / newProfitLockingPeriod;
+            profitUnlockingRate = Math.mulDiv(totalLockedShares, MAX_BPS_EXTENDED, newProfitLockingPeriod);
             fullProfitUnlockDate = block.timestamp + newProfitLockingPeriod;
             lastProfitUpdate = block.timestamp;
         } else {
