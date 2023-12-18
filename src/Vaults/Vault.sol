@@ -329,20 +329,63 @@ contract Vault is IVault, VaultErrors, VaultEvents {
     function balanceOf(address owner) external view returns (uint256) {
         return balances[owner];
     }
-
-    function previewWithdraw(uint256 assests) external view returns (uint256) {}
-    function previewRedeem(uint256 shares) external view returns (uint256) {}
-    function maxMint(address receiver) external view returns (uint256) {}
-    function maxDeposit(address receiver) external view returns (uint256) {}
-    function convertToAssets(uint256 shares) external view returns (uint256) {}
-    function previewMint(uint256 shares) external view returns (uint256) {}
-    function previewDeposits(uint256 assets) external view returns (uint256) {}
-    function convertToShares(uint256 assets) external view returns (uint256) {}
-    function totalAssets() external view returns (uint256) {}
-    //function asset() external view returns(ERC20);
-    function maxRedeem(address owner, uint256 maxLoss, address[10] calldata strats) external view returns (uint256) {}
-    function maxWithdraw(address owner, uint256 maxLoss, address[10] calldata strats) external view returns (uint256) {}
-    function assessShareOfUnrealizedLosses(address strategy, uint256 assetsNeeded) external view returns (uint256) {}
+    function isShutdown() external view returns(bool) {
+        return shutdown;
+    }
+    function unlockedShares() external view returns(uint256) {
+        return _unlockedShares();
+    }
+    function pricePerShare() external view returns(uint256) {
+        return _convertToAssets(10**decimals, Rounding.ROUND_DOWN);
+    }
+    function getDefaultQueue() external view returns(address[10] memory) {
+        return defaultQueue;
+    }
+    // function totalSupply() external view returns(uint256) {
+    //     return _totalSupply();
+    // }
+    // function asset() external view returns(address) {
+    //     return address(asset);
+    // }
+    function totalAssets() external view returns(uint256) {
+        return _totalAssets();
+    }
+    function convertToShares(uint256 assets) external view returns (uint256) {
+        return _convertToShares(assets, Rounding.ROUND_DOWN);
+    }
+    function previewDeposit(uint256 assets) external view returns (uint256) {
+        return _convertToShares(assets, Rounding.ROUND_DOWN);
+    }
+    function previewMint(uint256 shares) external view returns (uint256) {
+        return _convertToAssets(shares, Rounding.ROUND_UP);
+    }
+    function convertToAssets(uint256 shares) external view returns (uint256) {
+        return _convertToAssets(shares, Rounding.ROUND_DOWN);
+    }
+    function maxDeposit(address receiver) external view returns (uint256) {
+        return _maxDeposit(receiver);
+    }
+    function maxMint(address receiver) external view returns (uint256) {
+        uint256 max = _maxDeposit(receiver);
+        return _convertToShares(max, Rounding.ROUND_DOWN);
+    }
+    function maxWithdraw(address owner, uint256 maxLoss, address[10] calldata strats) external view returns (uint256) {
+        return _maxWithdraw(owner, maxLoss, strats);
+    }
+    function maxRedeem(address owner, uint256 maxLoss, address[10] calldata strats) external view returns (uint256) {
+        return Math.min(_convertToShares(_maxWithdraw(owner, maxLoss, strats), Rounding.ROUND_UP), balances[owner]);
+    }
+    function previewWithdraw(uint256 assets) external view returns (uint256) {
+        return _convertToShares(assets, Rounding.ROUND_UP);
+    }
+    function previewRedeem(uint256 shares) external view returns (uint256) {
+        return _convertToAssets(shares, Rounding.ROUND_DOWN);
+    }
+    
+    function assessShareOfUnrealizedLosses(address strategy, uint256 assetsNeeded) external view returns (uint256) {
+        if (strategies[strategy].currentDebt < assetsNeeded) revert InsufficentAssets();
+        return _assessShareOfUnrealizedLosses(strategy, assetsNeeded);
+    }
 
     // ====================================================== \\
     //                    INTERNAL FUNCTIONS                  \\
@@ -380,16 +423,18 @@ contract Vault is IVault, VaultErrors, VaultEvents {
     }
 
     function _increaseAllowance(address owner, address spender, uint256 amount) private returns (bool) {
-        allowance[owner][spender] += amount;
-        emit Approval(owner, spender, amount);
+        uint256 newAllowance = allowance[owner][spender] + amount;
+        allowance[owner][spender] = newAllowance;
+        emit Approval(owner, spender, newAllowance);
         return true;
     }
 
     function _decreaseAllowance(address owner, address spender, uint256 amount) private returns (bool) {
-        allowance[owner][spender] -= amount;
+        uint256 newAllowance = allowance[owner][spender] - amount;
+        allowance[owner][spender] = newAllowance;
+        emit Approval(owner, spender, newAllowance);
         return true;
     }
-    ///Note: can use unchecked but need to add a additional safety check. Compare gas on that.
 
     function _burnShares(uint256 shares, address owner) private {
         balances[owner] -= shares;
@@ -432,7 +477,7 @@ contract Vault is IVault, VaultErrors, VaultEvents {
             return shares;
         }
         uint256 ts = _totalSupply();
-        if (totalSupply == 0) {
+        if (ts == 0) {
             return shares;
         }
         uint256 numerator = shares * _totalAssets();
@@ -511,9 +556,9 @@ contract Vault is IVault, VaultErrors, VaultEvents {
         view
         returns (uint256)
     {
-        uint256 maxAssets = _convertToAssets(balances[address(this)], Rounding.ROUND_DOWN);
+        uint256 maxAssets = _convertToAssets(balances[owner], Rounding.ROUND_DOWN);
         address withdrawLimitMod = withdrawLimitModule;
-        if (withdrawLimitModule != address(0)) {
+        if (withdrawLimitMod != address(0)) {
             return Math.min(
                 IWithdrawLimitModule(withdrawLimitMod).availableWithdrawLimit(owner, maxLoss, strats), maxAssets
             );
@@ -523,7 +568,7 @@ contract Vault is IVault, VaultErrors, VaultEvents {
             uint256 have = currentIdle;
             uint256 loss;
             address[10] memory _strategies = defaultQueue;
-            if (_strategies.length != 0 && !useDefaultQueue) {
+            if (strats.length != 0 && !useDefaultQueue) {
                 _strategies = strats;
             }
             for (uint256 i = 0; i < 10; ++i) {
@@ -721,7 +766,6 @@ contract Vault is IVault, VaultErrors, VaultEvents {
     function _revokeStrategy(address strategy, bool force) private {
         if (strategies[strategy].activation == 0) revert InactiveStrategy();
         uint256 loss;
-        ///Note if debt is greater than zero it should have to be forced to take on the loss, and should not be done by default.
         if (strategies[strategy].currentDebt != 0) {
             if (!force) revert ForceRequired();
             loss = strategies[strategy].currentDebt;
@@ -730,9 +774,11 @@ contract Vault is IVault, VaultErrors, VaultEvents {
         }
         strategies[strategy] = StrategyParams(0, 0, 0, 0);
         address[10] memory newQueue;
+        uint256 newIndex = 0;
         for (uint256 i = 0; i < queueIndex;) {
             if (defaultQueue[i] != strategy) {
-                newQueue[i] = defaultQueue[i];
+                newQueue[newIndex] = defaultQueue[i];
+                newIndex += 1;
             }
             unchecked {
                 ++i;

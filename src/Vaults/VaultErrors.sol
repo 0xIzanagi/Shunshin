@@ -9,6 +9,7 @@ abstract contract VaultErrors {
     error ForceRequired();
     error InactiveStrategy();
     error InsufficentAllowance();
+    error InsufficentAssets();
     error InsufficentBalance();
     error InsufficentIdle();
     error InsufficentVaultAssets();
