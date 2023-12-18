@@ -535,28 +535,28 @@ contract VaultTest is Test {
     }
 
     /**
-     * Testing Assumptions: 
+     * Testing Assumptions:
      *         If the vault is shutdown the new debt level becomes 0
      *         the two debts can not be equal to one another
      *         if current debt is greater than the new debt it should withdraw the funds
-     *             the amount is equal to the delta between the old and new debt 
+     *             the amount is equal to the delta between the old and new debt
      *             However is the current idle + withdrawn assets is < min idle withdraw min idle
      *             make sure that we do not try to withdraw to much, and if it is withdraw what the max amount available is
-     *             check for losses and if there are losses revert 
-     *             if not losses withdraw 
+     *             check for losses and if there are losses revert
+     *             if not losses withdraw
      *             if withdrawn is greater than assets to withdraw convert ATW to withdrawn
-     *             update the storage vars 
+     *             update the storage vars
      *         if new debt is greater (depositing into the strategy)
-     *             make sure it is not higher than the max debt 
-     *             make sure max deposits is not 0 
-     *             amount to deposit is the difference between the new and current debt 
+     *             make sure it is not higher than the max debt
+     *             make sure max deposits is not 0
+     *             amount to deposit is the difference between the new and current debt
      *             if it is greater than max swap to max
      *             check min idle needed and make sure deposit amount is not greater than min idle
      *             make sure deposits are greater than 0
      *             approve the asset for the strategy and deposit (after taking pre balance)
      *             take post balance
      *             reset approvals
-     *             calculated actual deposited amount 
+     *             calculated actual deposited amount
      *             update storage for debt and idle
      *             update the strategy debt
      */
@@ -581,7 +581,7 @@ contract VaultTest is Test {
         /// 1a: New debt is > than strategy max debt so revert else continue;
         vm.expectRevert(VaultErrors.OverMaxDebt.selector);
         vault.updateDebt(address(_strat), 1);
-        
+
         vault.setRole(address(this), VaultEvents.Roles.MAX_DEBT_MANAGER);
         vault.updateMaxDebtForStrategy(address(_strat), 50_000 ether);
         _strat.setMaxDeposit(0);
@@ -589,8 +589,7 @@ contract VaultTest is Test {
         /// 1b: We are inputing a acceptable amount but the strategy will not let us deposit.
         vm.expectRevert(VaultErrors.ZeroDeposit.selector);
         vault.updateDebt(address(_strat), 10_000 ether);
-       
-        
+
         /// 1c: Case where the desired assets are > than the maximum deposit amount.
         /// It should switch to the maximum deposit amount;
 
@@ -603,13 +602,13 @@ contract VaultTest is Test {
         /// Post deposit allowance should be set back to 0
         assertEq(vault.allowance(address(vault), address(_strat)), 0);
 
-        /// 1d: If the current required idle is > than the total idle revert. 
+        /// 1d: If the current required idle is > than the total idle revert.
         vault.setRole(address(this), VaultEvents.Roles.MINIMUM_IDLE_MANAGER);
         vault.setMinimumTotalIdle(type(uint256).max);
         vm.expectRevert(VaultErrors.InsufficentIdle.selector);
         vault.updateDebt(address(_strat), 15_000 ether);
 
-        /// 1e: If the available idle is < the desired deposits just deposit the available. 
+        /// 1e: If the available idle is < the desired deposits just deposit the available.
 
         vault.setMinimumTotalIdle(992_500 ether);
         uint256 preSecond = mock.balanceOf(address(vault));
@@ -619,15 +618,13 @@ contract VaultTest is Test {
         assertEq(vault.totalIdle(), 992_500 ether);
         assertEq(vault.totalDebt(), 7_500 ether);
 
-        (, , uint256 current, ) = vault.strategies(address(_strat));
+        (,, uint256 current,) = vault.strategies(address(_strat));
         assertEq(current, 7_500 ether);
-
 
         /// Only the delta between the two idles should be able to be deposited
         assertEq(deltaSecond, 2_500 ether);
 
         /// Test Case 2: New debt is less than current debt so we are withdrawing from the strategy.
-
 
         /// 2a: Either the amount to withdraw + total idle is greater than minimum total idle
         /// or it is not. If it is not make the withdrawable assets eq. to the delta needed to

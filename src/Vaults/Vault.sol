@@ -21,6 +21,7 @@ import {VaultEvents} from "./VaultEvents.sol";
 ///Todo
 /// 1. Visability of storage variables
 /// 2. Add storage visability function calls to interface
+/// 3. Shadow Variable naming
 
 contract Vault is IVault, VaultErrors, VaultEvents {
     //Note Gas optimizations here (pack struct);
@@ -329,16 +330,20 @@ contract Vault is IVault, VaultErrors, VaultEvents {
     function balanceOf(address owner) external view returns (uint256) {
         return balances[owner];
     }
-    function isShutdown() external view returns(bool) {
+
+    function isShutdown() external view returns (bool) {
         return shutdown;
     }
-    function unlockedShares() external view returns(uint256) {
+
+    function unlockedShares() external view returns (uint256) {
         return _unlockedShares();
     }
-    function pricePerShare() external view returns(uint256) {
-        return _convertToAssets(10**decimals, Rounding.ROUND_DOWN);
+
+    function pricePerShare() external view returns (uint256) {
+        return _convertToAssets(10 ** decimals, Rounding.ROUND_DOWN);
     }
-    function getDefaultQueue() external view returns(address[10] memory) {
+
+    function getDefaultQueue() external view returns (address[10] memory) {
         return defaultQueue;
     }
     // function totalSupply() external view returns(uint256) {
@@ -347,41 +352,52 @@ contract Vault is IVault, VaultErrors, VaultEvents {
     // function asset() external view returns(address) {
     //     return address(asset);
     // }
-    function totalAssets() external view returns(uint256) {
+
+    function totalAssets() external view returns (uint256) {
         return _totalAssets();
     }
+
     function convertToShares(uint256 assets) external view returns (uint256) {
         return _convertToShares(assets, Rounding.ROUND_DOWN);
     }
+
     function previewDeposit(uint256 assets) external view returns (uint256) {
         return _convertToShares(assets, Rounding.ROUND_DOWN);
     }
+
     function previewMint(uint256 shares) external view returns (uint256) {
         return _convertToAssets(shares, Rounding.ROUND_UP);
     }
+
     function convertToAssets(uint256 shares) external view returns (uint256) {
         return _convertToAssets(shares, Rounding.ROUND_DOWN);
     }
+
     function maxDeposit(address receiver) external view returns (uint256) {
         return _maxDeposit(receiver);
     }
+
     function maxMint(address receiver) external view returns (uint256) {
         uint256 max = _maxDeposit(receiver);
         return _convertToShares(max, Rounding.ROUND_DOWN);
     }
+
     function maxWithdraw(address owner, uint256 maxLoss, address[10] calldata strats) external view returns (uint256) {
         return _maxWithdraw(owner, maxLoss, strats);
     }
+
     function maxRedeem(address owner, uint256 maxLoss, address[10] calldata strats) external view returns (uint256) {
         return Math.min(_convertToShares(_maxWithdraw(owner, maxLoss, strats), Rounding.ROUND_UP), balances[owner]);
     }
+
     function previewWithdraw(uint256 assets) external view returns (uint256) {
         return _convertToShares(assets, Rounding.ROUND_UP);
     }
+
     function previewRedeem(uint256 shares) external view returns (uint256) {
         return _convertToAssets(shares, Rounding.ROUND_DOWN);
     }
-    
+
     function assessShareOfUnrealizedLosses(address strategy, uint256 assetsNeeded) external view returns (uint256) {
         if (strategies[strategy].currentDebt < assetsNeeded) revert InsufficentAssets();
         return _assessShareOfUnrealizedLosses(strategy, assetsNeeded);

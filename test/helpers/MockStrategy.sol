@@ -17,26 +17,34 @@ contract MockStrategy is ERC20, IStrategy {
         return address(_asset);
     }
 
-    function balanceOf(address) public override(IStrategy, ERC20) view returns (uint256) {
+    function balanceOf(address) public view override(IStrategy, ERC20) returns (uint256) {
         return _asset.balanceOf(address(this));
     }
+
     function maxDeposit(address) external view returns (uint256) {
         return _maxDeposit;
     }
+
     function redeem(uint256 amount, address receiver, address owner) external returns (uint256) {
         _asset.transfer(receiver, amount);
     }
+
     function deposit(uint256 value, address receiver) external returns (uint256) {
         _asset.transferFrom(msg.sender, address(this), value);
     }
+
     function totalAssets() external view returns (uint256) {}
+
     function convertToAssets(uint256) external view returns (uint256) {
         return _asset.balanceOf(address(this));
     }
+
     function convertToShares(uint256) external view returns (uint256) {}
+
     function previewWithdraw(uint256) external view returns (uint256) {
         return _asset.balanceOf(address(this));
     }
+
     function maxRedeem(address) external view returns (uint256) {
         return _asset.balanceOf(address(this));
     }
