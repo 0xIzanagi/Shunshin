@@ -460,13 +460,13 @@ contract Vault is IVault, VaultErrors, VaultEvents {
 
     function _unlockedShares() private view returns (uint256) {
         uint256 _fullProfitUnlockDate = fullProfitUnlockDate;
-        uint256 unlockedShares;
+        uint256 unlocked;
         if (_fullProfitUnlockDate > block.timestamp) {
-            unlockedShares = profitUnlockingRate * (block.timestamp - lastProfitUpdate) / MAX_BPS_EXTENDED;
+            unlocked = profitUnlockingRate * (block.timestamp - lastProfitUpdate) / MAX_BPS_EXTENDED;
         } else if (_fullProfitUnlockDate != 0) {
-            unlockedShares = balances[address(this)];
+            unlocked = balances[address(this)];
         }
-        return unlockedShares;
+        return unlocked;
     }
 
     function _totalSupply() private view returns (uint256) {
@@ -474,14 +474,14 @@ contract Vault is IVault, VaultErrors, VaultEvents {
     }
 
     function _burnUnlockedShares() private {
-        uint256 unlockedShares = _unlockedShares();
-        if (unlockedShares == 0) {
+        uint256 _unlocked = _unlockedShares();
+        if (_unlocked == 0) {
             return;
         }
         if (fullProfitUnlockDate > block.timestamp) {
             lastProfitUpdate = block.timestamp;
         }
-        _burnShares(unlockedShares, address(this));
+        _burnShares(_unlocked, address(this));
     }
 
     function _totalAssets() private view returns (uint256) {
@@ -959,7 +959,7 @@ contract Vault is IVault, VaultErrors, VaultEvents {
             _burnShares(report.sharesToBurn, address(this));
             uint256 sharesNotToLock = Math.min(report.sharesToBurn, newlyLockedShares);
             newlyLockedShares -= sharesNotToLock;
-            previouslyLockedShares -= report.sharesToBurn - sharesNotToLock;
+            previouslyLockedShares -= (report.sharesToBurn - sharesNotToLock);
         }
 
         if (report.accountantFeeShares > 0) {

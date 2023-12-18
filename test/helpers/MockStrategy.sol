@@ -25,11 +25,11 @@ contract MockStrategy is ERC20, IStrategy {
         return _maxDeposit;
     }
 
-    function redeem(uint256 amount, address receiver, address owner) external returns (uint256) {
+    function redeem(uint256 amount, address receiver, address) external returns (uint256) {
         _asset.transfer(receiver, amount);
     }
 
-    function deposit(uint256 value, address receiver) external returns (uint256) {
+    function deposit(uint256 value, address) external returns (uint256) {
         _asset.transferFrom(msg.sender, address(this), value);
     }
 
