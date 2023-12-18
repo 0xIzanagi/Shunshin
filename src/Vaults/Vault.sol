@@ -671,10 +671,10 @@ contract Vault is IVault, VaultErrors, VaultEvents {
         address[MAX_QUEUE] calldata strats
     ) private returns (uint256) {
         if (receiver == address(0)) revert ZeroAddress();
-        if (maxLoss <= MAX_BPS) revert MaxLoss();
+        if (maxLoss > MAX_BPS) revert MaxLoss();
 
         if (withdrawLimitModule != address(0)) {
-            if (assets <= _maxWithdraw(owner, maxLoss, strats)) revert WithdrawLimit();
+            if (assets > _maxWithdraw(owner, maxLoss, strats)) revert WithdrawLimit();
         }
 
         uint256 shares = sharesToBurn;
@@ -702,7 +702,7 @@ contract Vault is IVault, VaultErrors, VaultEvents {
 
             for (uint256 i = 0; i < MAX_QUEUE; ++i) {
                 if (_strategies[i] == address(0)) {
-                    continue;
+                    break;
                 }
                 if (strategies[_strategies[i]].activation == 0) revert InactiveStrategy();
                 uint256 currentDebt = strategies[_strategies[i]].currentDebt;
@@ -714,6 +714,7 @@ contract Vault is IVault, VaultErrors, VaultEvents {
                     if (maxTake < assetsToWithdraw - unrealizedLossesShare) {
                         uint256 wanted = assetsToWithdraw - unrealizedLossesShare;
                         unrealizedLossesShare = unrealizedLossesShare * maxTake / wanted;
+                        assetsToWithdraw = maxTake + unrealizedLossesShare;
                     }
                     assetsToWithdraw -= unrealizedLossesShare;
                     requestedAssets -= unrealizedLossesShare;
@@ -761,6 +762,7 @@ contract Vault is IVault, VaultErrors, VaultEvents {
             if (assets - requestedAssets > assets * maxLoss / MAX_BPS) revert MaxLoss();
         }
         _burnShares(shares, owner);
+        totalIdle = currentTotalIdle - requestedAssets;
         asset.transfer(receiver, requestedAssets);
         emit Withdraw(sender, receiver, owner, assets, shares);
         return requestedAssets;
