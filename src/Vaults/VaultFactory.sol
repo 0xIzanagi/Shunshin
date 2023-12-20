@@ -8,7 +8,7 @@
 
 pragma solidity 0.8.23;
 
-import {VaultBase} from "./VaultBase.sol";
+import {Vault} from "./Vault.sol";
 import {ERC20} from "oz/token/ERC20/ERC20.sol";
 
 contract VaultFactory {
@@ -47,23 +47,13 @@ contract VaultFactory {
         governance = _governance;
     }
 
-    // function deploy(
-    //     ERC20 asset,
-    //     string memory _name,
-    //     string memory _symbol,
-    //     address _roleManager,
-    //     uint256 _profitMaxUnlockTime
-    // ) external returns (address) {
-    //     if (shutdown) revert FactoryShutdown();
-    //     // address vaultAddr = createFromBlueprint(vaultBlueprint, asset, _name, _symbol, _roleManager, _profitMaxUnlockTime, 3, keccak256(abi.encode(msg.sender, address(asset), _name, _symbol)));
-    //     // return vaultAddr;
-    // }
-
-    //function createFromBlueprint(address _blueprint, ERC20 _asset, string memory _name, string memory _symbol, )
-
-    function blueprint() external view returns (address) {
-        return vaultBlueprint;
-    }
+    function deploy(ERC20 _asset,
+        string memory _name,
+        string memory _symbol,
+        address _roleManager,
+        uint256 _profitMaxUnlockTime) external returns (address vault) {
+            vault = address(new Vault(_asset, _name, _symbol, _roleManager, _profitMaxUnlockTime));
+        }
 
     function apiVersion() external pure returns (string memory) {
         return API_VERSION;
